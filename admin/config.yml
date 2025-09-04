@@ -1,0 +1,35 @@
+backend:
+  name: git-gateway
+  branch: main
+
+local_backend: true
+
+publish_mode: editorial_workflow
+
+media_folder: "assets/templates"
+public_folder: "/assets/templates"
+
+collections:
+  - name: "events" 
+    label: "Events"
+    label_singular: "Event"
+    folder: "_events"
+    create: true
+    slug: "{{date}}-{{slug}}"
+    extension: "md"
+    format: "frontmatter"
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Slug", name: "slug", widget: "string", hint: "URL slug" }
+      - { label: "Description", name: "description", widget: "text" }
+      - { label: "Date", name: "date", widget: "datetime", date_format: "YYYY-MM-DD" }
+      - { label: "Status", name: "status", widget: "select", options: ["active", "closed"], default: "active" }
+      - {label: "Certificate Template", name: "template", widget: "image"}
+      - { label: "Firestore Collection", name: "firestore_collection", widget: "string", hint: "Firestore collection/doc id" }
+      - label: "Participant Fields"
+        name: "participantFields"
+        widget: "list"
+        summary: "{{fields.label}} ({{fields.key}})"
+        fields:
+          - { label: "Key", name: "key", widget: "string" }
+          - { label: "Label", name: "label", widget: "string" }
