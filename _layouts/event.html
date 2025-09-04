@@ -1,5 +1,13 @@
 ---
 layout: default
+title: "{{ page.title }} - Certificate | RSA Certify"
+description: "{{ page.description }} - Get your achievement certificate from Rotaract South Asia MDIO. Download your digital certificate instantly."
+keywords: "{{ page.title }}, Rotaract Certificate, {{ page.title }} Certificate, RSAMDIO, Rotaract South Asia MDIO, Achievement Certificate, Digital Certificate, {{ page.date | date: '%Y' }}"
+author: "Rotaract South Asia MDIO"
+og_type: "event"
+og_image: "/assets/images/calculatorogimg.webp"
+schema_type: "Event"
+robots: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
 ---
 
 <!-- Enhanced Header Section -->
@@ -22,6 +30,18 @@ layout: default
                 <p class="hero-subtitle mb-4 animate-slide-up-delay">
                     Celebrate and showcase your Contributions and Achievements.
                 </p>
+                
+                <!-- Breadcrumb Navigation for SEO -->
+                <nav aria-label="breadcrumb" class="breadcrumb-nav mb-3">
+                    <ol class="breadcrumb justify-content-center">
+                        <li class="breadcrumb-item">
+                            <a href="/" class="breadcrumb-link">
+                                <i class="fa-solid fa-home me-1"></i>Home
+                            </a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">{{ page.title }}</li>
+                    </ol>
+                </nav>
             </div>
         </div>
     </div>
@@ -33,14 +53,30 @@ layout: default
         <div class="row justify-content-center">
             <div class="col-lg-10">
                 <div class="event-info-section text-center mb-4">
-                    <h2 class="event-title mb-3">{{ page.title }}</h2>
-                    <p class="event-description mb-4">{{ page.description }}</p>
+                    <header class="event-header">
+                        <h2 class="event-title mb-3">{{ page.title }}</h2>
+                        <p class="event-description mb-4">{{ page.description }}</p>
+                        
+                        <!-- Event Schema.org Microdata -->
+                        <div itemscope itemtype="https://schema.org/Event" class="event-schema-data" style="display: none;">
+                            <meta itemprop="name" content="{{ page.title }}">
+                            <meta itemprop="description" content="{{ page.description }}">
+                            <meta itemprop="startDate" content="{{ page.date | date: '%Y-%m-%d' }}">
+                            <meta itemprop="endDate" content="{{ page.date | date: '%Y-%m-%d' }}">
+                            <meta itemprop="eventStatus" content="{% if page.status == 'active' %}EventScheduled{% else %}EventCancelled{% endif %}">
+                            <meta itemprop="eventAttendanceMode" content="OfflineEventAttendanceMode">
+                            <div itemprop="organizer" itemscope itemtype="https://schema.org/Organization">
+                                <meta itemprop="name" content="Rotaract South Asia MDIO">
+                                <meta itemprop="url" content="{{ site.url }}">
+                            </div>
+                        </div>
+                    </header>
                     
                     <!-- Enhanced Event Meta Information -->
                     <div class="event-meta-grid mb-4">
                         <div class="meta-item">
                             <div class="meta-icon">
-                                <i class="fas fa-calendar-alt"></i>
+                                <i class="fa-solid fa-calendar-alt"></i>
                             </div>
                             <div class="meta-content">
                                 <div class="meta-label">Event Date</div>
@@ -50,14 +86,14 @@ layout: default
                         
                         <div class="meta-item">
                             <div class="meta-icon">
-                                <i class="fas fa-award"></i>
+                                <i class="fa-solid fa-award"></i>
                             </div>
 
                             <div class="meta-content">
                                 <div class="meta-label">Status</div>
                                 <div class="meta-value">
                                     <span class="status-badge {% if page.status == 'active' %}status-active{% else %}status-closed{% endif %}">
-                                        <i class="fas fa-{% if page.status == 'active' %}check-circle{% else %}lock{% endif %} me-2"></i>
+                                        <i class="fa-solid fa-{% if page.status == 'active' %}check-circle{% else %}lock{% endif %} me-2"></i>
                                         {{ page.status | capitalize }}
                                     </span>
                                 </div>
@@ -66,7 +102,7 @@ layout: default
                         
                         <div class="meta-item">
                             <div class="meta-icon">
-                                <i class="fas fa-file-pdf"></i>
+                                <i class="fa-solid fa-file-pdf"></i>
                             </div>
                             <div class="meta-content">
                                 <div class="meta-label">Format</div>
@@ -86,7 +122,7 @@ layout: default
                         <form id="certificateForm" class="enhanced-form">
                             <div class="form-group">
                                 <label for="participantEmail" class="form-label">
-                                    <i class="fas fa-envelope me-2"></i>
+                                    <i class="fa-solid fa-envelope me-2"></i>
                                     Email Address
                                 </label>
                                 <div class="email-input-container">
@@ -99,18 +135,18 @@ layout: default
                                     >
                                 </div>
                                 <div class="form-help">
-                                    <i class="fas fa-info-circle me-1"></i>
+                                    <i class="fa-solid fa-info-circle me-1"></i>
                                     Enter the email address you used when registering for this activity.
                                 </div>
                             </div>
                             
                             <button type="submit" class="btn btn-primary btn-lg w-100 submit-btn" id="searchBtn">
                                 <span class="btn-content">
-                                    <i class="fas fa-search me-2"></i>
+                                    <i class="fa-solid fa-search me-2"></i>
                                     Find Certificate
                                 </span>
                                 <span class="btn-loading" style="display: none;">
-                                    <i class="fas fa-spinner fa-spin me-2"></i>
+                                    <i class="fa-solid fa-spinner fa-spin me-2"></i>
                                     Searching...
                                 </span>
                             </button>
@@ -130,7 +166,7 @@ layout: default
                         <div id="certificateFound" class="success-state mt-4" style="display: none;">
                             <div class="success-header">
                                 <div class="success-icon">
-                                    <i class="fas fa-check-circle"></i>
+                                    <i class="fa-solid fa-check-circle"></i>
                                 </div>
                                 <h4 class="success-title">Certificate Found!</h4>
                                 <p class="success-message">Hello <strong id="participantName"></strong>!</p>
@@ -141,11 +177,11 @@ layout: default
                                 
                                 <button class="btn btn-success btn-lg w-100 download-btn" id="downloadBtn">
                                     <span class="btn-content">
-                                        <i class="fas fa-download me-2"></i>
+                                        <i class="fa-solid fa-download me-2"></i>
                                         Download PDF Certificate
                                     </span>
                                     <span class="btn-loading" style="display: none;">
-                                        <i class="fas fa-spinner fa-spin me-2"></i>
+                                        <i class="fa-solid fa-spinner fa-spin me-2"></i>
                                         Generating PDF...
                                     </span>
                                 </button>
@@ -156,7 +192,7 @@ layout: default
                         <div id="errorState" class="error-state mt-4" style="display: none;">
                             <div class="error-header">
                                 <div class="error-icon">
-                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <i class="fa-solid fa-exclamation-triangle"></i>
                                 </div>
                                 <h4 class="error-title">Certificate Not Found</h4>
                             </div>
@@ -179,14 +215,14 @@ layout: default
                     <div class="closed-event-card">
                         <div class="closed-event-content text-center">
                             <div class="closed-event-icon">
-                                <i class="fas fa-lock"></i>
+                                <i class="fa-solid fa-lock"></i>
                             </div>
                             <h3 class="closed-event-title">Activity Closed</h3>
                             <p class="closed-event-message">
                                 This Activity is currently closed and certificates are no longer available for download.
                             </p>
                             <a href="/" class="btn btn-outline-primary btn-lg">
-                                <i class="fas fa-arrow-left me-2"></i>
+                                <i class="fa-solid fa-arrow-left me-2"></i>
                                 Back to Home
                             </a>
                         </div>
@@ -199,6 +235,47 @@ layout: default
 
 <!-- Enhanced Styles -->
 <style>
+/* Breadcrumb Navigation */
+.breadcrumb-nav {
+    margin-bottom: 1rem;
+}
+
+.breadcrumb {
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+}
+
+
+
+.breadcrumb-link {
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.breadcrumb-link:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+    color: #6b7280;
+    font-weight: 500;
+}
+
 /* Hero Section */
 .hero-section {
     position: relative;
@@ -889,7 +966,7 @@ layout: default
         alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; border-radius: 12px;';
         alertDiv.innerHTML = `
             <div class="d-flex align-items-center">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                <i class="fa-solid fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
                 ${message}
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
