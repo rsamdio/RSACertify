@@ -1,0 +1,785 @@
+---
+layout: default
+title: Home
+---
+
+<!-- Hero Section with Enhanced Design -->
+<div class="hero-section mb-5">
+    <div class="hero-background"></div>
+    <div class="container position-relative">
+        <div class="row justify-content-center text-center">
+            <div class="col-lg-10">
+                <!-- RSAMDIO Logo with Animation -->
+                <div class="logo-section mb-4 animate-fade-in">
+                    <img src="/assets/images/rsamdio.webp" alt="Rotaract South Asia MDIO" class="rsamdio-logo">
+                </div>
+                
+                <!-- Main Title with Enhanced Typography -->
+                <h1 class="hero-title mb-4 animate-slide-up">
+                    Certificate Center
+                </h1>
+                
+                <!-- Enhanced Subtitle -->
+                <p class="hero-subtitle mb-4 animate-slide-up-delay">
+                    Celebrate and showcase your Contributions and Achievements.
+                </p>
+                
+                <!-- Call to Action Buttons -->
+                <div class="hero-actions animate-slide-up-delay-2">
+                    <a href="#events" class="btn btn-primary btn-lg">
+                        <i class="fas fa-award me-2"></i>Browse Activities
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Events Section -->
+<div id="events" class="events-section">
+    <div class="container">
+        <!-- Section Header -->
+        <div class="row mb-5">
+            <div class="col-12 text-center">
+                <h2 class="section-title mb-3">
+                    <i class="fas fa-calendar-alt me-3 text-primary"></i>Available Activities
+                </h2>
+                <p class="section-subtitle text-muted">
+                    Browse all available activities and get your certificates instantly
+                </p>
+            </div>
+        </div>
+        
+        <!-- Enhanced Search Section -->
+        <div class="row mb-5">
+            <div class="col-lg-8 col-md-10 mx-auto">
+                <div class="search-container">
+                    <div class="search-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <input 
+                        type="text" 
+                        class="form-control search-input" 
+                        id="searchInput" 
+                        placeholder="Search events by title, description, or keywords..."
+                    >
+                    <div class="search-actions">
+                        <button class="btn btn-outline-secondary btn-sm" id="clearSearch" style="display: none;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="search-stats mt-3 text-center">
+                    <small class="text-muted">
+                        <span id="searchResultsCount">0</span> activities found
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Events Grid with Enhanced Cards -->
+        <div class="row justify-content-around" id="eventsGrid">
+            {% assign sorted_events = site.events | sort: 'date' | reverse %}
+            {% for event in sorted_events %}
+            <div class="col-lg-4 col-md-6 mb-4 event-card-wrapper" 
+                 data-title="{{ event.title | downcase }}" 
+                 data-description="{{ event.description | downcase }}"
+                 data-status="{{ event.status }}"
+                 data-date="{{ event.date | date: '%Y-%m-%d' }}">
+                <div class="event-card h-100">
+                    <div class="event-card-header">
+                        <div class="event-status-badge">
+                            <span class="badge {% if event.status == 'active' %}bg-success{% else %}bg-secondary{% endif %}">
+                                <i class="fas fa-{% if event.status == 'active' %}check-circle{% else %}lock{% endif %} me-1"></i>
+                                {{ event.status | capitalize }}
+                            </span>
+                        </div>
+                        <div class="event-date">
+                            <i class="fas fa-calendar text-muted me-1"></i>
+                            <span>{{ event.date | date: "%b %d, %Y" }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="event-card-body">
+                        <h5 class="event-title">{{ event.title }}</h5>
+                        <p class="event-description">{{ event.description }}</p>
+                    </div>
+                    
+                    <div class="event-card-footer">
+                        {% if event.status == 'active' %}
+                            <a href="/{{ event.slug }}/" class="btn btn-primary w-100 btn-get-certificate">
+                                <i class="fas fa-award me-2"></i>Get Certificate
+                            </a>
+                        {% else %}
+                            <button class="btn btn-secondary w-100" disabled>
+                                <i class="fas fa-lock me-2"></i>Event Closed
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- No Results Message with Enhanced Design -->
+        <div class="row" id="noResults" style="display: none;">
+            <div class="col-12 text-center">
+                <div class="no-results-container">
+                    <div class="no-results-icon">
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    </div>
+                    <h4 class="text-muted mb-2">No events found</h4>
+                    <p class="text-muted mb-3">Try adjusting your search criteria or browse all events</p>
+                    <button class="btn btn-outline-primary" onclick="clearSearchAndShowAll()">
+                        <i class="fas fa-eye me-2"></i>Show All Events
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Similar Tools & Initiatives Section -->
+<section class="similar-tools-section mt-16 mb-8">
+    <div class="container">
+        <div class="text-center mb-2">
+            <h2 class="section-title mb-3">
+                <i class="fas fa-tools me-3 text-primary"></i>Similar Tools & Initiatives
+            </h2>
+            <p class="section-subtitle text-muted">
+                Explore other interactive tools and resources from Rotaract South Asia MDIO
+            </p>
+        </div>
+        
+        <div class="row justify-content-center">
+
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="tool-card">
+                    <a href="https://dues.rsamdio.org" target="_blank" rel="noopener noreferrer" class="tool-link">
+                        <div class="tool-icon">
+                            <i class="fas fa-calculator"></i>
+                        </div>
+                        <h3 class="tool-title">Club Invoice Calculator</h3>
+                        <p class="tool-description">Estimate your Club Invoices with precision and ease.</p>
+                        <div class="tool-action">
+                            <span>View Resource</span>
+                            <i class="fas fa-external-link-alt"></i>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="tool-card">
+                    <a href="https://buddy.rsamdio.org/" target="_blank" rel="noopener noreferrer" class="tool-link">
+                        <div class="tool-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h3 class="tool-title">Rotaract Buddy</h3>
+                        <p class="tool-description">AI-powered chatbot for all your Rotary & Rotaract questions</p>
+                        <div class="tool-action">
+                            <span>View Resource</span>
+                            <i class="fas fa-external-link-alt"></i>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="tool-card">
+                    <a href="https://navigate.rsamdio.org/" target="_blank" rel="noopener noreferrer" class="tool-link">
+                        <div class="tool-icon">
+                            <i class="fas fa-route"></i>
+                        </div>
+                        <h3 class="tool-title">NAVIGATE</h3>
+                        <p class="tool-description">Navigate your Rotaract journey with guided pathways</p>
+                        <div class="tool-action">
+                            <span>View Resource</span>
+                            <i class="fas fa-external-link-alt"></i>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="tool-card">
+                    <a href="https://connect.rsamdio.org/publications" target="_blank" rel="noopener noreferrer" class="tool-link">
+                        <div class="tool-icon">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <h3 class="tool-title">Publications Hub</h3>
+                        <p class="tool-description">Access the District Publications from across South Asia</p>
+                        <div class="tool-action">
+                            <span>View Resource</span>
+                            <i class="fas fa-external-link-alt"></i>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="tool-card">
+                    <a href="https://connect.rsamdio.org/rotaractnews" target="_blank" rel="noopener noreferrer" class="tool-link">
+                        <div class="tool-icon">
+                            <i class="fas fa-newspaper"></i>
+                        </div>
+                        <h3 class="tool-title">News Submission</h3>
+                        <p class="tool-description">Submit your updates for the official Rotaract News Magazine</p>
+                        <div class="tool-action">
+                            <span>View Resource</span>
+                            <i class="fas fa-external-link-alt"></i>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</section>
+
+<!-- Enhanced Styles -->
+<style>
+/* Hero Section */
+.hero-section {
+    position: relative;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    color: #1f2937;
+    padding: 4rem 0;
+    border-radius: 0 0 2rem 2rem;
+    overflow: hidden;
+    margin: -2rem -1rem 0 -1rem;
+    border: 1px solid #e2e8f0;
+}
+
+.hero-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="%23667eea" opacity="0.05"/><circle cx="75" cy="75" r="1" fill="%23667eea" opacity="0.05"/><circle cx="50" cy="10" r="0.5" fill="%23667eea" opacity="0.05"/><circle cx="10" cy="60" r="0.5" fill="%23667eea" opacity="0.05"/><circle cx="90" cy="40" r="0.5" fill="%23667eea" opacity="0.05"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    opacity: 0.4;
+}
+
+.rsamdio-logo {
+    max-width: 120px;
+    height: auto;
+    transition: opacity 0.3s ease;
+}
+
+.rsamdio-logo:hover {
+    opacity: 0.8;
+}
+
+.hero-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    text-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+    letter-spacing: -0.02em;
+    color: #1f2937;
+}
+
+.hero-subtitle {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: #4b5563;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.hero-actions .btn {
+    padding: 0.875rem 2rem;
+    font-weight: 600;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.hero-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+}
+
+/* Section Styling */
+.section-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.section-subtitle {
+    font-size: 1.1rem;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* Enhanced Search */
+.search-container {
+    position: relative;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    padding: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.search-container:focus-within {
+    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #667eea;
+    font-size: 1.1rem;
+}
+
+.search-input {
+    border: none;
+    padding: 1rem 1rem 1rem 3.5rem;
+    font-size: 1.1rem;
+    background: transparent;
+    width: 100%;
+}
+
+.search-input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.search-actions {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Enhanced Event Cards */
+.event-card-wrapper {
+    transition: all 0.3s ease;
+}
+
+.event-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+.event-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
+
+.event-card-header {
+    padding: 1.5rem 1.5rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.event-status-badge .badge {
+    font-size: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.event-date {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.event-card-body {
+    padding: 0 1.5rem 1.5rem;
+}
+
+.event-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+}
+
+.event-description {
+    color: #6b7280;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.event-meta {
+    margin-bottom: 1rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+.event-card-footer {
+    padding: 0 1.5rem 1.5rem;
+}
+
+.btn-get-certificate {
+    padding: 0.875rem 1.5rem;
+    font-weight: 600;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.btn-get-certificate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+/* Custom Primary Button Colors - Material Design Blue */
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+    border-color: #3b82f6 !important;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af) !important;
+    border-color: #1d4ed8 !important;
+}
+
+.btn-primary:focus {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af) !important;
+    border-color: #1d4ed8 !important;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25) !important;
+}
+
+/* No Results Styling */
+.no-results-container {
+    padding: 3rem 1rem;
+    background: #f8fafc;
+    border-radius: 20px;
+    border: 2px dashed #e2e8f0;
+}
+
+.no-results-icon {
+    margin-bottom: 1rem;
+}
+
+/* Similar Tools Section Styling */
+.similar-tools-section {
+    background: transparent;
+    padding: 4rem 0;
+    margin: 2rem 0;
+}
+
+.tool-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.05);
+    overflow: hidden;
+    height: 100%;
+}
+
+.tool-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
+
+.tool-link {
+    display: block;
+    padding: 2rem;
+    text-decoration: none;
+    color: inherit;
+    height: 100%;
+}
+
+.tool-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    margin: 0 auto 1.5rem;
+    transition: transform 0.3s ease;
+}
+
+.tool-card:hover .tool-icon {
+    transform: scale(1.1);
+}
+
+.tool-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.75rem;
+    text-align: center;
+}
+
+.tool-description {
+    color: #6b7280;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+}
+
+.tool-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: #3b82f6;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: color 0.3s ease;
+}
+
+.tool-card:hover .tool-action {
+    color: #1d4ed8;
+}
+
+
+
+/* Animations */
+.animate-fade-in {
+    animation: fadeIn 1s ease-out;
+}
+
+.animate-slide-up {
+    animation: slideUp 0.8s ease-out;
+}
+
+.animate-slide-up-delay {
+    animation: slideUp 0.8s ease-out 0.2s both;
+}
+
+.animate-slide-up-delay-2 {
+    animation: slideUp 0.8s ease-out 0.4s both;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0; 
+        transform: translateY(30px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 3rem 0;
+        margin: -1rem -0.5rem 0 -0.5rem;
+        border-radius: 0 0 1rem 1rem;
+    }
+    
+    .hero-title {
+        font-size: 2.5rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.1rem;
+    }
+    
+    .hero-actions .btn {
+        display: block;
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+    
+    .section-title {
+        font-size: 2rem;
+    }
+    
+    .search-container {
+        margin: 0 1rem;
+    }
+    
+    .event-card-wrapper {
+        margin-bottom: 1.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .rsamdio-logo {
+        max-width: 100px;
+    }
+    
+    .event-card-header {
+        padding: 1rem 1rem 0.5rem;
+    }
+    
+    .event-card-body {
+        padding: 0 1rem 1rem;
+    }
+    
+    .event-card-footer {
+        padding: 0 1rem 1rem;
+    }
+}
+</style>
+
+<!-- Enhanced JavaScript -->
+<script>
+// Enhanced search functionality with better UX
+document.addEventListener('DOMContentLoaded', function() {
+    setupEnhancedEventListeners();
+    updateSearchResultsCount();
+});
+
+// Setup enhanced event listeners
+function setupEnhancedEventListeners() {
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    
+    searchInput.addEventListener('input', function() {
+        filterEvents();
+        updateSearchResultsCount();
+        toggleClearButton();
+    });
+    
+    clearSearchBtn.addEventListener('click', clearSearchAndShowAll);
+    
+    // Add smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+}
+
+// Enhanced filter events with better performance
+function filterEvents() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+    const eventCards = document.querySelectorAll('.event-card-wrapper');
+    const noResults = document.getElementById('noResults');
+    
+    let visibleCount = 0;
+    
+    eventCards.forEach(card => {
+        const title = card.dataset.title;
+        const description = card.dataset.description;
+        const date = card.dataset.date;
+        
+        // Enhanced search: include date matching
+        const matchesSearch = title.includes(searchTerm) || 
+                            description.includes(searchTerm) ||
+                            (searchTerm && date.includes(searchTerm));
+        
+        if (matchesSearch) {
+            card.style.display = 'block';
+            card.style.animation = 'fadeIn 0.3s ease-out';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    // Show/hide no results message with animation
+    if (visibleCount === 0 && searchTerm) {
+        noResults.style.display = 'block';
+        noResults.style.animation = 'fadeIn 0.3s ease-out';
+    } else {
+        noResults.style.display = 'none';
+    }
+}
+
+// Update search results count
+function updateSearchResultsCount() {
+    const searchTerm = document.getElementById('searchInput').value.trim();
+    const eventCards = document.querySelectorAll('.event-card-wrapper');
+    const resultsCount = document.getElementById('searchResultsCount');
+    
+    if (!searchTerm) {
+        resultsCount.textContent = eventCards.length;
+        return;
+    }
+    
+    let visibleCount = 0;
+    eventCards.forEach(card => {
+        if (card.style.display !== 'none') {
+            visibleCount++;
+        }
+    });
+    
+    resultsCount.textContent = visibleCount;
+}
+
+// Toggle clear button visibility
+function toggleClearButton() {
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    
+    if (searchInput.value.trim()) {
+        clearSearchBtn.style.display = 'block';
+    } else {
+        clearSearchBtn.style.display = 'none';
+    }
+}
+
+// Clear search and show all events
+function clearSearchAndShowAll() {
+    const searchInput = document.getElementById('searchInput');
+    searchInput.value = '';
+    filterEvents();
+    updateSearchResultsCount();
+    toggleClearButton();
+    searchInput.focus();
+}
+
+// Add intersection observer for scroll animations
+const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+        }
+    });
+}, observerOptions);
+
+// Observe event cards for scroll animations
+document.addEventListener('DOMContentLoaded', function() {
+    const eventCards = document.querySelectorAll('.event-card-wrapper');
+    eventCards.forEach(card => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(card);
+    });
+});
+</script>

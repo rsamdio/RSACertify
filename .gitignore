@@ -1,0 +1,31 @@
+.jekyll-cache
+_site
+.DS_Store
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.development
+.env.test
+.env.production
+.well-known
+env.example
+
+# Security: Firebase config with real keys
+assets/js/firebase-config-prod.js
+
+# Security: Logs
+*.log
+logs/
+
+# Security: Temporary files
+*.tmp
+*.temp
+Thumbs.db
+
+# Security: IDE files
+.vscode/
+.idea/
+*.swp
+*.swo

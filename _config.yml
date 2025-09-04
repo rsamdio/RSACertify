@@ -1,0 +1,57 @@
+# Site settings
+title: "Certificate Center | RSA MDIO"
+email: rsamdio@gmail.com
+description: "Celebrate and showcase your Contributions and Achievements."
+baseurl: ""
+url: "https://cert.rsamdio.org"
+twitter_username: rsa_mdio
+github_username: rsamdioweb
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-paginate
+
+# Collections
+collections:
+  events:
+    output: true
+    permalink: /:slug/
+    sort_by: date
+    sort_direction: reverse
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "events"
+    values:
+      layout: "event"
+      author: "Admin"
+
+# Pagination
+paginate: 10
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+
+# Include files
+include:
+  - _events
+  - _posts
+  - _pages
+  - assets
+  - admin
+  - .well-known

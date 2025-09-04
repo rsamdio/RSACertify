@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if page.title %}{{ page.title }} - {% endif %}{{ site.title }}</title>
+    <meta name="description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
+    
+    <!-- Enhanced Meta Tags -->
+    <meta name="author" content="{{ site.title }}">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#3b82f6">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}">
+    <meta property="og:description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ site.url }}{{ page.url }}">
+    <meta property="og:site_name" content="{{ site.title }}">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}">
+    <meta name="twitter:description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
+    <meta name="twitter:site" content="@{{ site.twitter_username }}">
+    
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+    <link rel="icon" type="image/webp" href="/assets/images/favicon.webp">
+    <link rel="apple-touch-icon" href="/assets/images/favicon.webp">
+    
+    <!-- Preload Critical Resources -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style">
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style">
+    <link rel="preload" href="{{ '/assets/css/style.css' | relative_url }}" as="style">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="{{ '/assets/css/style.css' | relative_url }}" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- SEO Tags -->
+    {% seo %}
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "{{ site.title }}",
+        "description": "{{ site.description }}",
+        "url": "{{ site.url }}",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "{{ site.url }}/?search={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+</head>
+<body class="enhanced-body">
+    
+    <!-- Main Content -->
+    <main id="main-content" class="container">
+        {{ content }}
+    </main>
+
+    <!-- Enhanced Footer -->
+    {% include footer.html %}
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{{ '/assets/js/firebase-config.js' | relative_url }}"></script>
+    <script src="{{ '/assets/js/certificate-generator.js' | relative_url }}"></script>
+    <script src="{{ '/assets/js/main.js' | relative_url }}"></script>
+    
+    <!-- Enhanced Styles for Layout -->
+    <style>
+    /* Skip Link for Accessibility */
+    .skip-link {
+        position: absolute;
+        top: -40px;
+        left: 6px;
+        background: #3b82f6;
+        color: white;
+        padding: 8px;
+        text-decoration: none;
+        border-radius: 4px;
+        z-index: 10000;
+        transition: top 0.3s;
+    }
+    
+    .skip-link:focus {
+        top: 6px;
+    }
+    
+    /* Enhanced Body */
+    .enhanced-body {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Main Content */
+    main {
+        flex: 1;
+        padding: 2rem 0;
+    }
+    
+    /* Enhanced Footer */
+    .enhanced-footer {
+        background: transparent !important;
+        color: #475569 !important;
+        padding: 2rem 0;
+        margin-top: auto;
+        border-top: 1px solid #e2e8f0;
+    }
+    
+    .enhanced-footer * {
+        color: inherit;
+    }
+    
+    .footer-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .footer-links a {
+        text-decoration: none;
+        transition: color 0.3s ease;
+        color: #64748b !important;
+    }
+    
+    .footer-links a:hover {
+        color: #3b82f6 !important;
+    }
+    
+    .footer-heading {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #475569 !important;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .footer-text {
+        font-size: 0.75rem;
+        color: #64748b !important;
+        margin-bottom: 0;
+    }
+    
+    .footer-link {
+        color: #64748b !important;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+    
+    .footer-link:hover {
+        color: #3b82f6 !important;
+    }
+    
+    .footer-divider {
+        border-top: 1px solid #cbd5e1;
+        padding-top: 1rem;
+    }
+    
+    .powered-by {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .footer-nav {
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    /* Override any Bootstrap text color classes */
+    .enhanced-footer .text-muted {
+        color: #64748b !important;
+    }
+    
+    .enhanced-footer .text-end {
+        text-align: right !important;
+    }
+    
+    .enhanced-footer .text-center {
+        text-align: center !important;
+    }
+    
+    .enhanced-footer .text-md-start {
+        text-align: left !important;
+    }
+    
+    .enhanced-footer .text-md-end {
+        text-align: right !important;
+    }
+    
+    /* Responsive Footer */
+    @media (max-width: 768px) {
+        .enhanced-footer .text-end {
+            text-align: left !important;
+            margin-top: 1rem;
+        }
+        
+        .footer-content {
+            text-align: center;
+        }
+    }
+    
+    /* Loading States */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(5px);
+    }
+    
+    /* Enhanced Focus States */
+    a:focus,
+    button:focus,
+    input:focus,
+    select:focus,
+    textarea:focus {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+    }
+    
+    /* Print Styles */
+    @media print {
+        .enhanced-footer,
+        .skip-link {
+            display: none !important;
+        }
+        
+        main {
+            padding: 0;
+        }
+    }
+    </style>
+</body>
+</html>

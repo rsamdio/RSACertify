@@ -1,0 +1,985 @@
+---
+layout: default
+---
+
+<!-- Enhanced Header Section -->
+<div class="hero-section mb-5">
+    <div class="hero-background"></div>
+    <div class="container position-relative">
+        <div class="row justify-content-center text-center">
+            <div class="col-lg-10">
+                <!-- RSAMDIO Logo with Animation -->
+                <div class="logo-section mb-4 animate-fade-in">
+                    <img src="/assets/images/rsamdio.webp" alt="Rotaract South Asia MDIO" class="rsamdio-logo">
+                </div>
+                
+                <!-- Main Title with Enhanced Typography -->
+                <h1 class="hero-title mb-4 animate-slide-up">
+                    Certificate Center
+                </h1>
+                
+                <!-- Enhanced Subtitle -->
+                <p class="hero-subtitle mb-4 animate-slide-up-delay">
+                    Celebrate and showcase your Contributions and Achievements.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unified Event & Certificate Section -->
+<div class="unified-event-section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="event-info-section text-center mb-4">
+                    <h2 class="event-title mb-3">{{ page.title }}</h2>
+                    <p class="event-description mb-4">{{ page.description }}</p>
+                    
+                    <!-- Enhanced Event Meta Information -->
+                    <div class="event-meta-grid mb-4">
+                        <div class="meta-item">
+                            <div class="meta-icon">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div class="meta-content">
+                                <div class="meta-label">Event Date</div>
+                                <div class="meta-value">{{ page.date | date: "%B %d, %Y" }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="meta-item">
+                            <div class="meta-icon">
+                                <i class="fas fa-award"></i>
+                            </div>
+
+                            <div class="meta-content">
+                                <div class="meta-label">Status</div>
+                                <div class="meta-value">
+                                    <span class="status-badge {% if page.status == 'active' %}status-active{% else %}status-closed{% endif %}">
+                                        <i class="fas fa-{% if page.status == 'active' %}check-circle{% else %}lock{% endif %} me-2"></i>
+                                        {{ page.status | capitalize }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="meta-item">
+                            <div class="meta-icon">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+                            <div class="meta-content">
+                                <div class="meta-label">Format</div>
+                                <div class="meta-value">PDF Certificate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% if page.status == 'active' %}
+                    <!-- Integrated Certificate Form -->
+                    <div class="integrated-certificate-form">
+                        <div class="form-header">
+                            <h3 class="form-title">Get Your Certificate</h3>
+                            <p class="form-subtitle">Enter your email address to retrieve your certificate</p>
+                        </div>
+                        
+                        <form id="certificateForm" class="enhanced-form">
+                            <div class="form-group">
+                                <label for="participantEmail" class="form-label">
+                                    <i class="fas fa-envelope me-2"></i>
+                                    Email Address
+                                </label>
+                                <div class="email-input-container">
+                                    <input 
+                                        type="email" 
+                                        class="email-input-field" 
+                                        id="participantEmail" 
+                                        placeholder="Enter your email address"
+                                        required
+                                    >
+                                </div>
+                                <div class="form-help">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Enter the email address you used when registering for this activity.
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-lg w-100 submit-btn" id="searchBtn">
+                                <span class="btn-content">
+                                    <i class="fas fa-search me-2"></i>
+                                    Find Certificate
+                                </span>
+                                <span class="btn-loading" style="display: none;">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>
+                                    Searching...
+                                </span>
+                            </button>
+                        </form>
+            
+                        <!-- Enhanced Loading State -->
+                        <div id="loadingState" class="loading-state" style="display: none;">
+                            <div class="loading-animation">
+                                <div class="loading-spinner"></div>
+                                <div class="loading-ripple"></div>
+                            </div>
+                            <h4 class="loading-title">Searching for your certificate...</h4>
+                            <p class="loading-subtitle">Please wait while we look up your information</p>
+                        </div>
+            
+                        <!-- Enhanced Certificate Found State -->
+                        <div id="certificateFound" class="success-state mt-4" style="display: none;">
+                            <div class="success-header">
+                                <div class="success-icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <h4 class="success-title">Certificate Found!</h4>
+                                <p class="success-message">Hello <strong id="participantName"></strong>!</p>
+                            </div>
+                            
+                            <div class="success-content">
+                                <p class="mb-4">Your certificate is ready for download. Click the button below to get your PDF.</p>
+                                
+                                <button class="btn btn-success btn-lg w-100 download-btn" id="downloadBtn">
+                                    <span class="btn-content">
+                                        <i class="fas fa-download me-2"></i>
+                                        Download PDF Certificate
+                                    </span>
+                                    <span class="btn-loading" style="display: none;">
+                                        <i class="fas fa-spinner fa-spin me-2"></i>
+                                        Generating PDF...
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+            
+                        <!-- Enhanced Error State -->
+                        <div id="errorState" class="error-state mt-4" style="display: none;">
+                            <div class="error-header">
+                                <div class="error-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <h4 class="error-title">Certificate Not Found</h4>
+                            </div>
+                            
+                            <div class="error-content">
+                                <p class="mb-3" id="errorMessage"></p>
+                                <div class="error-suggestions">
+                                    <h6>Suggestions:</h6>
+                                    <ul>
+                                        <li>Check if the email address is correct</li>
+                                        <li>Verify you registered for this activity</li>
+                                        <li>Contact the event organizer for assistance</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <!-- Enhanced Closed Event Message -->
+                    <div class="closed-event-card">
+                        <div class="closed-event-content text-center">
+                            <div class="closed-event-icon">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <h3 class="closed-event-title">Event Closed</h3>
+                            <p class="closed-event-message">
+                                This event is currently closed and certificates are no longer available for download.
+                            </p>
+                            <a href="/" class="btn btn-outline-primary btn-lg">
+                                <i class="fas fa-arrow-left me-2"></i>
+                                Back to Events
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Styles -->
+<style>
+/* Hero Section */
+.hero-section {
+    position: relative;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    color: #1f2937;
+    padding: 4rem 0;
+    border-radius: 0 0 2rem 2rem;
+    overflow: hidden;
+    margin: -2rem -1rem 0 -1rem;
+    border: 1px solid #e2e8f0;
+}
+
+.hero-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="%23667eea" opacity="0.05"/><circle cx="75" cy="75" r="1" fill="%23667eea" opacity="0.05"/><circle cx="50" cy="10" r="0.5" fill="%23667eea" opacity="0.05"/><circle cx="10" cy="60" r="0.5" fill="%23667eea" opacity="0.05"/><circle cx="90" cy="40" r="0.5" fill="%23667eea" opacity="0.05"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    opacity: 0.4;
+}
+
+.rsamdio-logo {
+    max-width: 120px;
+    height: auto;
+    transition: opacity 0.3s ease;
+}
+
+.rsamdio-logo:hover {
+    opacity: 0.8;
+}
+
+.hero-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    text-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+    letter-spacing: -0.02em;
+    color: #1f2937;
+}
+
+.hero-subtitle {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: #4b5563;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Unified Event Section */
+.unified-event-section {
+    margin-top: -2rem;
+    padding: 2rem 0;
+}
+
+.event-info-section {
+    background: transparent;
+    padding: 1rem 0;
+    position: relative;
+}
+
+.event-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1rem;
+}
+
+.event-description {
+    font-size: 1.1rem;
+    color: #6b7280;
+    line-height: 1.6;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.event-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: transparent;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    transition: all 0.3s ease;
+}
+
+.meta-item:hover {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.02);
+    transform: translateY(-2px);
+}
+
+.meta-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.meta-content {
+    flex: 1;
+}
+
+.meta-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.meta-value {
+    font-size: 1rem;
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.status-active {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.status-closed {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+    color: white;
+}
+
+
+
+
+
+.form-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+.form-subtitle {
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+/* Enhanced Form Styling */
+.enhanced-form .form-group {
+    margin-bottom: 2.5rem;
+}
+
+.enhanced-form {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Enhanced Email Input Field - Inspired by Landing Page Search */
+.email-input-container {
+    position: relative;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    padding: 0.5rem;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.email-input-container:focus-within {
+    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+    border-color: #3b82f6;
+}
+
+.email-input-field {
+    border: none;
+    padding: 1rem 1.5rem;
+    font-size: 1.1rem;
+    background: transparent;
+    width: 100%;
+    border-radius: 16px;
+}
+
+.email-input-field:focus {
+    outline: none;
+    box-shadow: none;
+    background: transparent;
+}
+
+/* Integrated Certificate Form */
+.integrated-certificate-form {
+    background: transparent;
+    padding: 1.5rem 0;
+    border-top: 1px solid #e2e8f0;
+    position: relative;
+    margin-top: 1rem;
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid #e2e8f0;
+    position: relative;
+}
+
+.form-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.75rem;
+}
+
+.form-subtitle {
+    color: #64748b;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+
+
+.form-help {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: #64748b;
+    padding: 0.5rem 0;
+}
+
+/* Button Styling */
+.submit-btn, .download-btn {
+    padding: 1.25rem 2.5rem;
+    font-weight: 600;
+    border-radius: 16px;
+    transition: all 0.3s ease;
+    border: none;
+    position: relative;
+    overflow: hidden;
+    font-size: 1.1rem;
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+.download-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.submit-btn:hover, .download-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+/* Button Hover Colors - Updated to Match Recent Palette */
+.submit-btn:hover {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af) !important;
+}
+
+.download-btn:hover {
+    background: linear-gradient(135deg, #059669, #047857) !important;
+}
+
+.btn-loading {
+    display: none;
+}
+
+/* Loading State */
+.loading-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.loading-animation {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid #f3f4f6;
+    border-top: 4px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+.loading-ripple {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    border: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: ripple 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes ripple {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+.loading-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+.loading-subtitle {
+    color: #6b7280;
+}
+
+/* Success State */
+.success-state {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 16px;
+    padding: 2rem;
+}
+
+.success-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.success-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    margin: 0 auto 1rem;
+}
+
+.success-title {
+    color: #065f46;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.success-message {
+    color: #047857;
+    margin-bottom: 0;
+}
+
+.success-content {
+    text-align: center;
+}
+
+/* Error State */
+.error-state {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 16px;
+    padding: 2rem;
+}
+
+.error-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.error-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    margin: 0 auto 1rem;
+}
+
+.error-title {
+    color: #991b1b;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.error-content {
+    text-align: center;
+}
+
+.error-suggestions {
+    text-align: left;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+}
+
+.error-suggestions h6 {
+    color: #374151;
+    margin-bottom: 0.75rem;
+}
+
+.error-suggestions ul {
+    margin-bottom: 0;
+    padding-left: 1.25rem;
+}
+
+.error-suggestions li {
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+/* Closed Event State */
+.closed-event-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+    padding: 4rem 2rem;
+    border: 1px solid rgba(0,0,0,0.05);
+    text-align: center;
+}
+
+.closed-event-icon {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 3rem;
+    margin: 0 auto 2rem;
+}
+
+.closed-event-title {
+    color: #374151;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.closed-event-message {
+    color: #6b7280;
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Animations */
+.animate-fade-in {
+    animation: fadeIn 1s ease-out;
+}
+
+.animate-slide-up {
+    animation: slideUp 0.8s ease-out;
+}
+
+.animate-slide-up-delay {
+    animation: slideUp 0.8s ease-out 0.2s both;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0; 
+        transform: translateY(30px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 3rem 0;
+        margin: -1rem -0.5rem 0 -0.5rem;
+        border-radius: 0 0 1rem 1rem;
+    }
+    
+    .hero-title {
+        font-size: 2.5rem;
+    }
+    
+    .event-header-card {
+        padding: 2rem 1.5rem;
+        margin: 0 1rem;
+    }
+    
+    .event-title {
+        font-size: 2rem;
+    }
+    
+    .event-meta-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .certificate-form-card {
+        padding: 2rem 1.5rem;
+        margin: 0 1rem;
+    }
+    
+    .form-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+    
+    .form-title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .rsamdio-logo {
+        max-width: 100px;
+    }
+    
+    .event-header-card {
+        padding: 1.5rem 1rem;
+    }
+    
+    .certificate-form-card {
+        padding: 1.5rem 1rem;
+    }
+    
+    .meta-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+}
+</style>
+
+<script>
+    // Event configuration from Jekyll frontmatter
+    const eventConfig = {
+        template: '{{ page.template }}',
+        participantFields: {{ page.participantFields | jsonify }},
+        firestoreCollection: '{{ page.firestore_collection }}'
+    };
+
+    // Initialize certificate manager
+    let certificateManager = null;
+
+    // Function to search for participant in Firestore
+    async function searchParticipant(eventDocId, email) {
+        if (!window.firebase) {
+            throw new Error('Firebase not initialized');
+        }
+
+        try {
+            // Initialize certificate generator if not already done
+            if (!window.certificateManager) {
+                window.certificateManager = new window.CertificateGenerator();
+            }
+            
+            // Use the certificate manager's search function
+            return await window.certificateManager.searchParticipant(eventDocId, email);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Function to download certificate
+    async function downloadCertificate(eventSlug, participant, eventDocId) {
+        try {
+            const downloadBtn = document.getElementById('downloadBtn');
+            const btnContent = downloadBtn.querySelector('.btn-content');
+            const btnLoading = downloadBtn.querySelector('.btn-loading');
+            
+            // Show loading state
+            btnContent.style.display = 'none';
+            btnLoading.style.display = 'inline-block';
+            downloadBtn.disabled = true;
+
+
+            // Generate certificate
+            const pdf = await generateCertificate(eventSlug, participant, eventConfig);
+            
+            // Download the PDF
+            const fileName = `certificate-${eventSlug}-${participant.name.replace(/\s+/g, '-')}.pdf`;
+            pdf.save(fileName);
+
+            // Update participant status in Firestore
+            await updateParticipantStatus(eventDocId, participant.id);
+
+            // Reset button
+            btnContent.style.display = 'inline-block';
+            btnLoading.style.display = 'none';
+            downloadBtn.disabled = false;
+
+            // Show success message
+            showAlert('PDF Certificate downloaded successfully!', 'success');
+        } catch (error) {
+            showAlert('Error downloading certificate. Please try again.', 'danger');
+            
+            const downloadBtn = document.getElementById('downloadBtn');
+            const btnContent = downloadBtn.querySelector('.btn-content');
+            const btnLoading = downloadBtn.querySelector('.btn-loading');
+            
+            btnContent.style.display = 'inline-block';
+            btnLoading.style.display = 'none';
+            downloadBtn.disabled = false;
+        }
+    }
+
+    // Function to generate certificate
+    async function generateCertificate(eventSlug, participant, eventConfig) {
+        if (!window.certificateManager) {
+            window.certificateManager = new window.CertificateGenerator();
+        }
+        
+        return await window.certificateManager.generateCertificate(eventSlug, participant, eventConfig);
+    }
+
+    // Function to update participant status
+    async function updateParticipantStatus(eventDocId, participantId) {
+        if (!window.firebase) {
+            throw new Error('Firebase not initialized');
+        }
+
+        try {
+            // Initialize certificate generator if not already done
+            if (!window.certificateManager) {
+                window.certificateManager = new window.CertificateGenerator();
+            }
+            
+            // Use the certificate manager's update function
+            await window.certificateManager.updateParticipantStatus(eventDocId, participantId);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Function to show alerts
+    function showAlert(message, type) {
+        // Create alert element
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; border-radius: 12px;';
+        alertDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                ${message}
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Insert at the top of the form
+        const form = document.getElementById('certificateForm');
+        form.parentNode.insertBefore(alertDiv, form);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+    // Form submission handler
+    document.getElementById('certificateForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('participantEmail').value.trim();
+        if (!email) return;
+        
+        const searchBtn = document.getElementById('searchBtn');
+        const btnContent = searchBtn.querySelector('.btn-content');
+        const btnLoading = searchBtn.querySelector('.btn-loading');
+        
+        // Show loading state
+        btnContent.style.display = 'none';
+        btnLoading.style.display = 'inline-block';
+        searchBtn.disabled = true;
+        
+        document.getElementById('loadingState').style.display = 'block';
+        document.getElementById('certificateFound').style.display = 'none';
+        document.getElementById('errorState').style.display = 'none';
+        
+        try {
+            // Search for participant
+            const participant = await searchParticipant(eventConfig.firestoreCollection, email);
+            
+            if (participant) {
+                // Show certificate found
+                document.getElementById('certificateFound').style.display = 'block';
+                document.getElementById('participantName').textContent = participant.name;
+                
+                // Set up download button
+                document.getElementById('downloadBtn').onclick = () => {
+                    downloadCertificate('{{ page.slug }}', participant, eventConfig.firestoreCollection);
+                };
+                
+                // Scroll to certificate found section after it's fully rendered
+                setTimeout(() => {
+                    document.getElementById('certificateFound').scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                    });
+                }, 100);
+            } else {
+                // Show error
+                document.getElementById('errorMessage').textContent = 'No certificate found for this email address. Please check your email or contact the event organizer.';
+                document.getElementById('errorState').style.display = 'block';
+                
+                // Scroll to error section after it's fully rendered
+                setTimeout(() => {
+                    document.getElementById('errorState').scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                    });
+                }, 100);
+            }
+        } catch (error) {
+            document.getElementById('errorMessage').textContent = 'An error occurred while searching. Please try again.';
+            document.getElementById('errorState').style.display = 'block';
+            
+            // Scroll to error section after it's fully rendered
+            setTimeout(() => {
+                document.getElementById('errorState').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            }, 100);
+        } finally {
+            // Hide loading state
+            document.getElementById('loadingState').style.display = 'none';
+            
+            // Reset button
+            btnContent.style.display = 'inline-block';
+            btnLoading.style.display = 'none';
+            searchBtn.disabled = false;
+        }
+    });
+</script>
