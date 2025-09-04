@@ -26,7 +26,7 @@ collections:
       - { label: "Status", name: "status", widget: "select", options: ["active", "closed"], default: "active" }
       - {label: "Certificate Template", name: "template", widget: "image"}
       - { label: "Firestore Collection", name: "firestore_collection", widget: "string", hint: "Firestore collection/doc id" }
-      - label: "Participant Fields"
+      - label: "Certificate Fields"
         name: "participantFields"
         widget: "list"
         summary: "{{fields.label}} ({{fields.key}})"
@@ -34,11 +34,11 @@ collections:
           - { label: "Key", name: "key", widget: "string" }
           - { label: "Label", name: "label", widget: "string" }
           - { label: "Required", name: "required", widget: "boolean", default: false }
-          - { label: "X Position (%)", name: "x", widget: "string", hint: "Horizontal position as percentage" }
-          - { label: "Y Position (px)", name: "y", widget: "number", hint: "Vertical position in pixels" }
-          - { label: "Font Size", name: "font_size", widget: "number", default: 50 }
+          - { label: "X Position (%)", name: "x", widget: "string", default: "20%", hint: "Horizontal position as percentage" }
+          - { label: "Y Position (px)", name: "y", widget: "number", default: 350, hint: "Vertical position in pixels" }
+          - { label: "Font Size", name: "font_size", widget: "number", default: 50, hint: "Font size in pixels" }
           - { label: "Font Family", name: "font_family", widget: "string", default: "Arial" }
           - { label: "Color", name: "color", widget: "string", default: "#000000", hint: "Hex color code" }
-          - { label: "Width (%)", name: "width", widget: "string", hint: "Width as percentage" }
-          - { label: "Height (px)", name: "height", widget: "number", default: 50 }
+          - { label: "Width (%)", name: "width", widget: "string", default: "60%", hint: "Width as percentage" }
+          - { label: "Height (px)", name: "height", widget: "number", default: 50, hint: "Height in pixels" }
           - { label: "Text Align", name: "text_align", widget: "select", options: ["left", "center", "right"], default: "center" }
