@@ -1,0 +1,2006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta name="referrer" content="no-referrer-when-downgrade" />
+	<title>Admin Dashboard - RSA MDIO</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/webp" href="../assets/images/rsamdio.webp">
+    
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --info-color: #06b6d4;
+            --secondary-color: #6b7280;
+            --light-bg: #f8fafc;
+            --border-color: #e2e8f0;
+            --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --card-shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow-hover);
+        }
+
+        .nav-pills .nav-link {
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .nav-pills .nav-link:hover {
+            background-color: rgba(79, 70, 229, 0.1);
+            border-color: rgba(79, 70, 229, 0.2);
+        }
+
+        .nav-pills .nav-link.active {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            box-shadow: var(--card-shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem;
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table th {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: none;
+            font-weight: 600;
+            color: #374151;
+            padding: 1rem;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .table td {
+            padding: 1rem;
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+        
+        /* Custom field styling */
+        .custom-field-badge {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 1px solid #cbd5e1;
+            color: #475569;
+            font-size: 0.875rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .custom-field-badge.empty {
+            background: #f1f5f9;
+            color: #94a3b8;
+            border-color: #e2e8f0;
+        }
+
+        .table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(79, 70, 229, 0.02);
+        }
+
+        /* Admin Tables Specific Styling */
+        #adminsTable .table-light th,
+        #invitesTable .table-light th {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: none;
+            font-weight: 600;
+            color: #374151;
+            padding: 1.25rem 1rem;
+            font-size: 0.875rem;
+            text-transform: none;
+            letter-spacing: 0.025em;
+        }
+
+        #adminsTable .table-light th i,
+        #invitesTable .table-light th i {
+            color: #6b7280;
+            width: 16px;
+        }
+
+        .admin-avatar,
+        .invite-avatar {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .invite-avatar {
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .admin-info,
+        .invite-info {
+            flex: 1;
+        }
+
+        .admin-info .fw-semibold,
+        .invite-info .fw-semibold {
+            color: #111827;
+            margin-bottom: 2px;
+        }
+
+        .admin-info .text-muted,
+        .invite-info .text-muted {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .date-info .fw-medium {
+            color: #111827;
+            margin-bottom: 2px;
+        }
+
+        .date-info .text-muted {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .action-buttons .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+
+        .empty-state i {
+            display: block;
+            margin-bottom: 1rem;
+        }
+
+        .empty-state h6 {
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+                .empty-state p {
+            margin-bottom: 0;
+            font-size: 0.875rem;
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(79, 70, 229, 0.02);
+        }
+
+        .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+            border-color: var(--primary-color);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
+            border-color: var(--success-color);
+        }
+
+        .btn-outline-primary {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .badge {
+            border-radius: 6px;
+            font-weight: 500;
+            padding: 0.375rem 0.75rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .status-badge.success {
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+
+        .status-badge.pending {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+
+        .modal-content {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+            padding: 0.75rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--card-shadow-hover);
+        }
+
+        .stats-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-label {
+            color: var(--secondary-color);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.875rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--secondary-color);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .breadcrumb-nav {
+            background: transparent;
+            padding: 0;
+            margin-bottom: 1rem;
+        }
+
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: "›";
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            position: relative;
+            max-width: 300px;
+        }
+
+        .search-box .form-control {
+            padding-left: 2.5rem;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--secondary-color);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-header {
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .nav-pills .nav-link {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+            
+            .card-header {
+                padding: 1rem;
+            }
+            
+            .table th, .table td {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.875rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .action-buttons .btn {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+        }
+    </style>
+    
+    	<!-- Security: Load security utilities first -->
+	<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+	<script src="../assets/js/security-utils.js"></script>
+</head>
+<body class="bg-light">
+	<div id="gateScreen" class="container py-5">
+		<div class="d-flex justify-content-center align-items-center" style="min-height:50vh;">
+			<div class="card shadow-sm w-100" style="max-width:520px;">
+				<div class="card-body text-center">
+					<div class="mb-3">
+						<img src="../assets/images/rsamdio.webp" alt="RSA MDIO Logo" style="width: 64px; height: 64px; object-fit: contain;">
+					</div>
+					<h1 class="h4 mb-2">Admin Area</h1>
+					<p class="text-muted" id="gateMessage">Sign in to continue.</p>
+					<button class="btn btn-primary" onclick="signIn()">Sign in with Google</button>
+            </div>
+                </div>
+                </div>
+        </div>
+
+	<div id="appContainer" class="container py-4" style="display:none">
+		<!-- Enhanced Dashboard Header -->
+		<div class="dashboard-header">
+			<div class="d-flex align-items-center justify-content-between">
+				<div class="d-flex align-items-center gap-3">
+					<div class="rounded-circle bg-white bg-opacity-20 p-3">
+						<img src="../assets/images/rsamdio.webp" alt="RSA MDIO Logo" style="width: 48px; height: 48px; object-fit: contain;">
+            </div>
+                        <div>
+						<h1 class="h3 mb-1 text-white fw-bold">Admin Dashboard</h1>
+						<p class="mb-0 text-white-50">Manage Events and Participants</p>
+                        </div>
+				</div>
+				<div class="d-flex align-items-center gap-2">
+					<button class="btn btn-sm btn-light" onclick="signIn()" id="signinBtn">
+						<i class="fa-brands fa-google me-1"></i>Sign in
+                            </button>
+					<button class="btn btn-sm btn-outline-light d-none" onclick="signOut()" id="signoutBtn">
+						<i class="fa-solid fa-sign-out-alt me-1"></i>Sign out
+                            </button>
+                    </div>
+                </div>
+            </div>
+
+		<!-- Enhanced Navigation -->
+		<div class="d-flex justify-content-center mb-4">
+			<ul class="nav nav-pills">
+				<li class="nav-item">
+					<button class="nav-link active" id="tab-events" onclick="switchTab('events')">
+						<i class="fa-solid fa-calendar-days me-2"></i>Events
+					</button>
+                </li>
+				<li class="nav-item">
+					<button class="nav-link" id="tab-participants" onclick="switchTab('participants')">
+						<i class="fa-solid fa-users me-2"></i>Participants
+					</button>
+                </li>
+				<li class="nav-item">
+					<button class="nav-link" id="tab-admins" onclick="switchTab('admins')">
+						<i class="fa-solid fa-user-shield me-2"></i>Admins
+					</button>
+                </li>
+            </ul>
+		</div>
+
+		<!-- Events -->
+		<div id="eventsSection">
+			<!-- Events Table -->
+			<div class="card">
+				<div class="card-header d-flex justify-content-between align-items-center">
+					<div class="d-flex align-items-center gap-3">
+						<h2 class="h5 mb-0 fw-bold">
+							<i class="fa-solid fa-calendar-days me-2 text-primary"></i>Events
+						</h2>
+						<span class="badge bg-primary fs-6" id="totalEvents">0</span>
+                            </div>
+					<div class="action-buttons">
+						<button class="btn btn-outline-secondary" onclick="loadEvents()" title="Refresh">
+							<i class="fa-solid fa-rotate"></i>
+						</button>
+						<button class="btn btn-primary" onclick="openEventModal()">
+							<i class="fa-solid fa-plus me-1"></i>New Event
+						</button>
+                        </div>
+                    </div>
+				<div class="table-responsive">
+					<table class="table align-middle mb-0" id="eventsTable">
+						<thead>
+							<tr>
+								<th>Event Details</th>
+								<th>Participants</th>
+								<th>Certificates</th>
+								<th>Last Updated</th>
+								<th class="text-end">Actions</th>
+							</tr>
+						</thead>
+						<tbody></tbody>
+					</table>
+                </div>
+                </div>
+            </div>
+
+		<!-- Participants -->
+		<div id="participantsSection" class="d-none">
+			<!-- Breadcrumb Navigation -->
+			<nav class="breadcrumb-nav mb-3">
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item">
+						<a href="#" onclick="switchTab('events')" class="text-decoration-none">
+							<i class="fa-solid fa-calendar-days me-1"></i>Events
+						</a>
+					</li>
+					<li class="breadcrumb-item active">
+						<i class="fa-solid fa-users me-1"></i>Participants
+					</li>
+				</ol>
+			</nav>
+
+			<!-- Event Info Header -->
+			<div class="card mb-4">
+				<div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+						<div>
+							<h2 class="h4 mb-2 fw-bold">
+								<i class="fa-solid fa-users me-2 text-primary"></i>Participants
+							</h2>
+							<div class="d-flex align-items-center gap-3">
+								<span class="text-muted">
+									<i class="fa-solid fa-calendar me-1"></i>
+									Event: <strong id="participantsEventName">-</strong>
+								</span>
+								<span class="badge bg-info" id="participantsCount">0</span>
+							</div>
+						</div>
+						<div class="action-buttons">
+							<button class="btn btn-outline-secondary" onclick="switchTab('events')" title="Back to Events">
+								<i class="fa-solid fa-arrow-left me-1"></i>Back
+							</button>
+							<button class="btn btn-outline-primary" onclick="openBulkUploadModal()">
+								<i class="fa-solid fa-file-csv me-1"></i>Bulk Upload
+							</button>
+							<button class="btn btn-outline-success" onclick="downloadCsvTemplate()">
+								<i class="fa-solid fa-download me-1"></i>Template
+							</button>
+							<button class="btn btn-outline-info" onclick="exportParticipantsCsv()">
+								<i class="fa-solid fa-file-csv me-1"></i>Export
+							</button>
+							<button class="btn btn-success" onclick="openParticipantModal()">
+								<i class="fa-solid fa-user-plus me-1"></i>Add Participant
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Filters Card -->
+			<div class="card mb-3">
+				<div class="card-body">
+					<div class="row g-3 align-items-center">
+						<div class="col-md-6">
+							<div class="input-group" style="max-width: 100%;">
+								<span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass"></i></span>
+								<input id="participantsSearch" type="text" class="form-control" placeholder="Search name or email">
+							</div>
+						</div>
+						<div class="col-md-4">
+							<select id="participantsStatusFilter" class="form-select">
+								<option value="">All statuses</option>
+								<option value="downloaded">Downloaded</option>
+								<option value="pending">Pending</option>
+							</select>
+						</div>
+						<div class="col-md-2 text-end">
+							<button class="btn btn-outline-secondary w-100" onclick="loadParticipants()">
+								<i class="fa-solid fa-rotate me-1"></i>Refresh
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Participants Table -->
+			<div class="card">
+                            <div class="table-responsive">
+					<table class="table align-middle mb-0" id="participantsTable">
+						<thead>
+							<tr>
+								<th role="button" onclick="setParticipantsSort('name')" class="sortable-header">
+									Name <i class="fa-solid fa-sort ms-1" id="sort-name"></i>
+								</th>
+								<th role="button" onclick="setParticipantsSort('email')" class="sortable-header">
+									Email <i class="fa-solid fa-sort ms-1" id="sort-email"></i>
+								</th>
+								<th role="button" onclick="setParticipantsSort('certificateStatus')" class="sortable-header">
+									Certificate Status <i class="fa-solid fa-sort ms-1" id="sort-certificateStatus"></i>
+								</th>
+								<th class="text-end">Actions</th>
+							</tr>
+						</thead>
+						<tbody></tbody>
+                                </table>
+                    </div>
+                </div>
+            </div>
+
+		<!-- Admins -->
+		<div id="adminsSection" class="d-none">
+			<!-- Admin Management Header -->
+			<div class="card mb-4">
+				<div class="card-body">
+					<div class="row g-3 align-items-center">
+						<div class="col-lg-6">
+							<h2 class="h4 mb-2 fw-bold">
+								<i class="fa-solid fa-user-shield me-2 text-primary"></i>Admin Management
+							</h2>
+							<p class="text-muted mb-0">Manage admin access and invitations</p>
+                        </div>
+						<div class="col-lg-6">
+                                    <div class="input-group">
+								<span class="input-group-text bg-light">
+									<i class="fa-solid fa-envelope"></i>
+								</span>
+								<input id="newAdminEmail" type="email" class="form-control" placeholder="Enter admin email" aria-label="Admin email">
+								<button class="btn btn-primary" type="button" onclick="inviteAdminByEmail()">
+									<i class="fa-regular fa-paper-plane me-1"></i><span>Invite Admin</span>
+								</button>
+                                    </div>
+                                </div>
+                                </div>
+                            </div>
+                        </div>
+
+			<!-- Current Admins -->
+			<div class="card mb-4">
+				<div class="card-header">
+					<h3 class="h6 mb-0 fw-bold">
+						<i class="fa-solid fa-users-gear me-2 text-success"></i>Current Admins
+					</h3>
+				</div>
+                            <div class="table-responsive">
+					<table class="table table-hover align-middle mb-0" id="adminsTable">
+                                    <thead class="table-light">
+                                        <tr>
+								<th class="border-0" style="width: 40%">
+									<div class="d-flex align-items-center">
+										<i class="fa-solid fa-envelope me-2 text-muted"></i>
+										<span>Email Address</span>
+									</div>
+								</th>
+								<th class="border-0" style="width: 35%">
+									<div class="d-flex align-items-center">
+										<i class="fa-solid fa-calendar-plus me-2 text-muted"></i>
+										<span>Added Date</span>
+									</div>
+								</th>
+								<th class="border-0 text-end" style="width: 25%">
+									<div class="d-flex align-items-center justify-content-end">
+										<i class="fa-solid fa-cogs me-2 text-muted"></i>
+										<span>Actions</span>
+									</div>
+								</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+			<!-- Pending Invites -->
+			<div class="card">
+				<div class="card-header">
+					<h3 class="h6 mb-0 fw-bold">
+						<i class="fa-solid fa-clock me-2 text-warning"></i>Pending Invitations
+					</h3>
+                    </div>
+				<div class="table-responsive">
+					<table class="table table-hover align-middle mb-0" id="invitesTable">
+						<thead class="table-light">
+							<tr>
+								<th class="border-0" style="width: 40%">
+									<div class="d-flex align-items-center">
+										<i class="fa-solid fa-envelope me-2 text-muted"></i>
+										<span>Email Address</span>
+                </div>
+								</th>
+								<th class="border-0" style="width: 35%">
+									<div class="d-flex align-items-center">
+										<i class="fa-solid fa-calendar-plus me-2 text-muted"></i>
+										<span>Invited Date</span>
+            </div>
+								</th>
+								<th class="border-0 text-end" style="width: 25%">
+									<div class="d-flex align-items-center justify-content-end">
+										<i class="fa-solid fa-cogs me-2 text-muted"></i>
+										<span>Actions</span>
+                        </div>
+								</th>
+							</tr>
+						</thead>
+                                <tbody></tbody>
+                            </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Modal -->
+    <div class="modal fade" id="eventModal" tabindex="-1">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+					<h5 class="modal-title fw-bold" id="eventModalTitle">
+						<i class="fa-solid fa-calendar-plus me-2"></i>Create Event
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+				<div class="modal-body">
+                    <form id="eventForm">
+                        <input type="hidden" id="eventId">
+                        
+                        <!-- Basic Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="fw-bold text-primary mb-3">
+                                    <i class="fa-solid fa-info-circle me-2"></i>Basic Information
+                                </h6>
+                                </div>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label fw-semibold">Event Title *</label>
+                                <input id="eventTitle" class="form-control form-control-lg" placeholder="Enter event title" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-semibold">Event Date *</label>
+                                <input type="date" id="eventDate" class="form-control" required>
+                            </div>
+                        </div>
+                        
+                        <!-- Participant Fields -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-primary mb-3">
+                                <i class="fa-solid fa-list-check me-2"></i>Participant Fields
+                                </h6>
+                            <div class="form-text mb-3">Define custom fields required for each participant. Name and Email are always required.</div>
+                            <div id="eventFieldsContainer" class="border rounded p-3 mb-3 bg-light">
+                                <div class="text-center text-muted py-3">
+                                    <i class="fa-solid fa-plus-circle fa-2x mb-2"></i>
+                                    <p class="mb-0">No custom fields defined yet</p>
+                            </div>
+                                </div>
+                            <div class="d-flex gap-2 flex-wrap">
+								<button type="button" class="btn btn-outline-primary" onclick="addEventFieldRow()">
+									<i class="fa-solid fa-plus me-1"></i>Add Field
+								</button>
+								<button type="button" class="btn btn-outline-secondary" onclick="normalizeEventFields()">
+									<i class="fa-solid fa-magic me-1"></i>Normalize Keys
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light">
+					<button class="btn btn-secondary" data-bs-dismiss="modal">
+						<i class="fa-solid fa-times me-1"></i>Cancel
+					</button>
+					<button class="btn btn-primary" onclick="saveEvent()">
+						<i class="fa-regular fa-floppy-disk me-1"></i>Save Event
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Participant Modal -->
+    <div class="modal fade" id="participantModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+			<div class="modal-content">
+                <div class="modal-header bg-success text-white">
+					<h5 class="modal-title fw-bold">
+						<i class="fa-solid fa-user-plus me-2"></i>Add Participant
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+				<div class="modal-body">
+                    <form id="participantForm">
+                        <input type="hidden" id="participantId">
+						<input type="hidden" id="participantEventId">
+						
+						<!-- Basic Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+								<h6 class="fw-bold text-success mb-3">
+									<i class="fa-solid fa-user me-2"></i>Basic Information
+								</h6>
+                                    </div>
+							<div class="col-md-6 mb-3">
+								<label class="form-label fw-semibold">Full Name *</label>
+								<input id="participantName" class="form-control" placeholder="Enter participant's full name" required>
+                                    </div>
+							<div class="col-md-6 mb-3">
+								<label class="form-label fw-semibold">Email Address *</label>
+								<input type="email" id="participantEmail" class="form-control" placeholder="participant@example.com" required>
+                            </div>
+                        </div>
+
+						<!-- Custom Fields Section -->
+						<div id="customFieldsSection" class="mb-4" style="display: none;">
+							<h6 class="fw-bold text-success mb-3">
+								<i class="fa-solid fa-list-check me-2"></i>Additional Information
+							</h6>
+							<div id="customFieldsContainer">
+								<!-- Dynamic fields will be inserted here -->
+                                    </div>
+                                </div>
+                    </form>
+                            </div>
+                <div class="modal-footer bg-light">
+					<button class="btn btn-secondary" data-bs-dismiss="modal">
+						<i class="fa-solid fa-times me-1"></i>Cancel
+					</button>
+					<button class="btn btn-success" onclick="saveParticipant()">
+						<i class="fa-regular fa-floppy-disk me-1"></i>Save Participant
+					</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+	<!-- Confirm Modal -->
+	<div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header"><h5 class="modal-title">Confirm Delete</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+				<div class="modal-body" id="confirmDeleteMessage">Are you sure?</div>
+				<div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-danger" id="confirmDeleteBtn">Delete</button></div>
+                                    </div>
+                                        </div>
+                                    </div>
+
+    <!-- Bulk Upload Modal -->
+    <div class="modal fade" id="bulkUploadModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+			<div class="modal-content">
+                <div class="modal-header bg-info text-white">
+					<h5 class="modal-title fw-bold">
+						<i class="fa-solid fa-file-csv me-2"></i>Bulk Upload Participants
+					</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+				<div class="modal-body">
+                    <!-- File Upload Section -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h6 class="fw-bold text-info mb-3">
+                                <i class="fa-solid fa-upload me-2"></i>Upload CSV File
+                            </h6>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Select CSV File</label>
+                                <input type="file" class="form-control form-control-lg" id="bulkCsvInput" accept=".csv">
+                                <div class="form-text mt-2">
+                                    <i class="fa-solid fa-info-circle me-1"></i>
+                                    <strong>Required headers:</strong> email, name. Additional columns will be mapped to custom fields if defined for the event.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                    <!-- Preview Section -->
+                    <div class="card d-none" id="bulkPreview">
+                        <div class="card-header">
+                            <h6 class="fw-bold text-info mb-0">
+                                <i class="fa-solid fa-eye me-2"></i>Preview & Validation
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered align-middle">
+                                    <thead id="bulkHead" class="table-light"></thead>
+                                    <tbody id="bulkBody"></tbody>
+                                    </table>
+                                </div>
+                            <div class="mt-3">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-success">●</span>
+                                            <small>New participants</small>
+                            </div>
+                        </div>
+                                    <div class="col-md-3">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-warning">●</span>
+                                            <small>Will update existing</small>
+                    </div>
+                </div>
+                                    <div class="col-md-3">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-danger">●</span>
+                                            <small>Duplicate in CSV</small>
+            </div>
+        </div>
+    </div>
+                </div>
+                        </div>
+                        </div>
+                                </div>
+                <div class="modal-footer bg-light">
+					<button class="btn btn-secondary" data-bs-dismiss="modal">
+						<i class="fa-solid fa-times me-1"></i>Close
+					</button>
+					<button class="btn btn-info" id="bulkImportBtn" disabled onclick="uploadBulkParticipants()">
+						<i class="fa-solid fa-upload me-1"></i>Import Participants
+					</button>
+                            </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+	<script src="/assets/js/firebase-config.js"></script>
+	<script>
+	const auth = firebase.auth();
+	const db = firebase.firestore();
+	let currentUser = null;
+	let selectedEvent = null;
+
+	function el(id){return document.getElementById(id)}
+
+	function showApp(){ document.getElementById('gateScreen').style.display='none'; document.getElementById('appContainer').style.display='block'; }
+	function showGate(message){ document.getElementById('appContainer').style.display='none'; const g=document.getElementById('gateScreen'); g.style.display='block'; if(message){ const m=document.getElementById('gateMessage'); if(m) m.textContent=message; }}
+
+	auth.onAuthStateChanged(async (user)=>{
+		currentUser = user;
+		if(!user){ 
+			showGate('Sign in to continue.'); 
+			return; 
+		}
+		
+		try {
+			el('signinBtn').classList.add('d-none');
+			el('signoutBtn').classList.remove('d-none');
+			
+			
+			// UID-based admin gating with invite auto-promotion
+			const adminDoc = await db.collection('admins').doc(user.uid).get();
+			if(!adminDoc.exists){
+				const inviteDoc = await db.collection('invites').doc((user.email||'').toLowerCase()).get();
+				if(inviteDoc.exists){
+					await db.collection('admins').doc(user.uid).set({ 
+						email: (user.email||'').toLowerCase(), 
+						createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+					}, { merge: true });
+					await db.collection('invites').doc((user.email||'').toLowerCase()).delete().catch(()=>{});
+				}
+			}
+			
+			const check = await db.collection('admins').doc(user.uid).get();
+			if(!check.exists){ 
+				showGate('Access denied. Ask an existing admin to invite you.'); 
+				await auth.signOut().catch(()=>{}); 
+				return; 
+			}
+			
+			showApp();
+			loadEvents();
+			loadAdmins();
+			loadInvites();
+			
+		} catch (error) {
+			showGate('Error verifying admin access: ' + error.message);
+			await auth.signOut().catch(()=>{});
+		}
+	});
+
+	// Auto-promotion on first sign-in via email invites
+	auth.onAuthStateChanged(async (user)=>{
+		if(!user) return;
+		// If not already admin by UID, check invites by email
+		const adminDoc = await db.collection('admins').doc(user.uid).get();
+		if(!adminDoc.exists){
+			const inviteDoc = await db.collection('invites').doc((user.email||'').toLowerCase()).get();
+			if(inviteDoc.exists){
+				await db.collection('admins').doc(user.uid).set({ email: (user.email||'').toLowerCase(), createdAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+				// Optionally clear invite (one-time use)
+				await db.collection('invites').doc((user.email||'').toLowerCase()).delete().catch(()=>{});
+			}
+		}
+	});
+
+	// Handle redirect result for authentication
+	auth.getRedirectResult().then((result) => {
+		if (result.user) {
+		}
+	}).catch((error) => {
+	});
+
+	async function signIn() {
+		try {
+			const provider = new firebase.auth.GoogleAuthProvider();
+			provider.addScope('email');
+			
+			// Try popup first, fallback to redirect if blocked
+			try {
+				await auth.signInWithPopup(provider);
+			} catch (popupError) {
+				// Fallback to redirect if popup fails
+				await auth.signInWithRedirect(provider);
+			}
+		} catch (error) {
+			showAlert('Authentication failed: ' + error.message, 'danger');
+		}
+	}
+	function signOut(){ auth.signOut(); }
+	window.signIn=signIn; window.signOut=signOut;
+
+	// Enhanced alert system for admin panel
+	function showAlert(message, type = 'info', duration = 5000) {
+		const alertDiv = document.createElement('div');
+		alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+		alertDiv.style.cssText = `
+			top: 20px; 
+			right: 20px; 
+			z-index: 9999; 
+			min-width: 300px; 
+			max-width: 500px;
+			border-radius: 12px;
+			box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+		`;
+		
+		const iconMap = {
+			success: 'check-circle',
+			danger: 'exclamation-triangle',
+			warning: 'exclamation-triangle',
+			info: 'info-circle'
+		};
+		
+		alertDiv.innerHTML = `
+			<div class="d-flex align-items-start">
+				<i class="fas fa-${iconMap[type] || 'info-circle'} me-2 mt-1"></i>
+				<div class="flex-grow-1">
+					<div class="fw-semibold">${message}</div>
+				</div>
+				<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+			</div>
+		`;
+		
+		document.body.appendChild(alertDiv);
+		
+		setTimeout(() => {
+			if (alertDiv.parentNode) {
+				alertDiv.remove();
+			}
+		}, duration);
+	}
+
+	function switchTab(name){
+		el('eventsSection').classList.toggle('d-none', name!=='events');
+		el('participantsSection').classList.toggle('d-none', name!=='participants');
+		el('adminsSection').classList.toggle('d-none', name!=='admins');
+		el('tab-events').classList.toggle('active', name==='events');
+		el('tab-participants').classList.toggle('active', name==='participants');
+		el('tab-admins').classList.toggle('active', name==='admins');
+	}
+	window.switchTab=switchTab;
+
+	async function loadEvents(){
+		const tbody = document.querySelector('#eventsTable tbody');
+		tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading events...</div></td></tr>';
+		
+		try {
+			const snap = await db.collection('events').get();
+			const docs = [...snap.docs].sort((a,b)=>{
+				const ea = a.data()||{}; const eb = b.data()||{};
+				const ta = (ea.updatedAt?.seconds || ea.createdAt?.seconds || 0);
+				const tb = (eb.updatedAt?.seconds || eb.createdAt?.seconds || 0);
+				return tb - ta;
+			});
+			let totalPart = 0; 
+			let totalCerts = 0; 
+			const rows = [];
+			
+			// Process each event and get real-time participant and certificate counts
+			for (const doc of docs) {
+				const e = doc.data();
+				
+				// Get real-time participant count and certificate count
+				const participantsSnap = await db.collection('events').doc(doc.id).collection('participants').get();
+				const participantsCount = participantsSnap.size;
+				const certificatesCount = participantsSnap.docs.filter(participantDoc => {
+					const participantData = participantDoc.data();
+					return participantData.certificateStatus === 'downloaded';
+				}).length;
+				
+				// Update the event document with real-time counts
+				await db.collection('events').doc(doc.id).set({
+					participantsCount: participantsCount,
+					certificatesCount: certificatesCount
+				}, { merge: true });
+				
+				totalPart += participantsCount;
+				totalCerts += certificatesCount;
+				
+				rows.push(`<tr>
+					<td>
+						<div class="fw-semibold fs-6">${e.title || '(untitled)'}</div>
+						<div class="text-muted small">
+							<i class="fa-solid fa-calendar me-1"></i>${e.date || 'No date set'}
+                        </div>
+						<div class="text-muted small">
+							<i class="fa-solid fa-hashtag me-1"></i>${doc.id}
+                </div>
+					</td>
+					<td>
+						<div class="d-flex align-items-center gap-2">
+							<span class="badge bg-primary fs-6">${participantsCount}</span>
+							<span class="text-muted small">participants</span>
+                </div>
+					</td>
+					<td>
+						<div class="d-flex align-items-center gap-2">
+							<span class="badge bg-success fs-6">${certificatesCount}</span>
+							<span class="text-muted small">issued</span>
+            </div>
+					</td>
+					<td>
+						<div class="text-muted small">
+							${e.updatedAt ? new Date(e.updatedAt.seconds * 1000).toLocaleDateString() : '-'}
+        </div>
+						<div class="text-muted small">
+							${e.updatedAt ? new Date(e.updatedAt.seconds * 1000).toLocaleTimeString() : ''}
+    </div>
+					</td>
+					<td class="text-end">
+						<div class="action-buttons">
+							<button class="btn btn-sm btn-outline-primary" onclick="openEventModal('${doc.id}')" title="Edit Event">
+								<i class="fa-regular fa-pen-to-square"></i>
+							</button>
+							<button class="btn btn-sm btn-primary" onclick="manageParticipants('${doc.id}')" title="Manage Participants">
+								<i class="fa-solid fa-users"></i>
+							</button>
+							<button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteEvent('${doc.id}','${(e.title||'').replace(/\"/g,'\\\"')}')" title="Delete Event">
+								<i class="fa-regular fa-trash-can"></i>
+							</button>
+						</div>
+					</td>
+				</tr>`);
+			}
+			
+			if (rows.length === 0) {
+				tbody.innerHTML = `
+					<tr><td colspan="5" class="empty-state">
+						<i class="fa-solid fa-calendar-xmark"></i>
+						<h6 class="mt-2">No events yet</h6>
+						<p class="mb-0">Create your first event to get started</p>
+					</td></tr>`;
+			} else {
+				tbody.innerHTML = rows.join('');
+			}
+			
+			// Update stats
+			if (el('totalEvents')) { el('totalEvents').innerText = docs.length; }
+			
+		} catch (error) {
+			tbody.innerHTML = `
+				<tr><td colspan="5" class="empty-state">
+					<i class="fa-solid fa-exclamation-triangle text-danger"></i>
+					<h6 class="mt-2">Error loading events</h6>
+					<p class="mb-0 text-danger">${error.message}</p>
+				</td></tr>`;
+		}
+	}
+	window.loadEvents=loadEvents;
+
+	const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+	function openEventModal(id){
+		el('eventForm').reset(); el('eventId').value=id||'';
+		el('eventModalTitle').innerText = id? 'Edit Event' : 'Create Event';
+		// default empty fields area
+		renderEventFields([]);
+		if(id){ db.collection('events').doc(id).get().then(d=>{const e=d.data(); el('eventTitle').value=e.title||''; el('eventDate').value=e.date||''; renderEventFields(e.participantFields||[]); eventModal.show();}); } else { eventModal.show(); }
+	}
+	window.openEventModal=openEventModal;
+
+	async function saveEvent(){
+		const id = el('eventId').value||undefined;
+		const payload={ title:el('eventTitle').value.trim(), date:el('eventDate').value, participantFields: getEventFieldsFromUI(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+		if(!payload.title||!payload.date) return showAlert('Title and date are required', 'warning');
+		if(!id){ payload.createdAt = firebase.firestore.FieldValue.serverTimestamp(); }
+		try{ if(id){ await db.collection('events').doc(id).set(payload,{merge:true}); } else { const ref=await db.collection('events').add(payload); await db.collection('events').doc(ref.id).set({participantsCount:0, certificatesCount:0},{merge:true}); } eventModal.hide(); loadEvents(); }catch(e){ showAlert('Failed: '+e.message, 'danger'); }
+	}
+	window.saveEvent=saveEvent;
+
+	function confirmDeleteEvent(id,title){ showConfirm(`Delete event "${title}" and all its participants?`, async ()=>{ await deleteEventCascade(id); loadEvents(); });}
+	window.confirmDeleteEvent=confirmDeleteEvent;
+
+	async function deleteEventCascade(eventId){ const parts=await db.collection('events').doc(eventId).collection('participants').get(); const batch=db.batch(); parts.forEach(d=>batch.delete(d.ref)); batch.delete(db.collection('events').doc(eventId)); await batch.commit(); }
+
+	function manageParticipants(eventId){ db.collection('events').doc(eventId).get().then(doc=>{ selectedEvent={id:doc.id,data:doc.data()}; el('participantsEventName').innerText=selectedEvent.data.title||selectedEvent.data.slug||selectedEvent.id; renderParticipantsTableHead(); switchTab('participants'); loadParticipants(); }); }
+	window.manageParticipants=manageParticipants;
+
+	async function loadParticipants(){ 
+		if(!selectedEvent) return; 
+		
+		const tbody = document.querySelector('#participantsTable tbody'); 
+		const extraFields = (selectedEvent?.data?.participantFields || []);
+		const totalColumns = 4 + extraFields.length; // Name, Email, Custom Fields, Certificate Status, Actions
+		tbody.innerHTML = `<tr><td colspan="${totalColumns}" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading participants...</div></td></tr>`; 
+		
+		try {
+			const snap = await db.collection('events').doc(selectedEvent.id).collection('participants').orderBy('name').get(); 
+			participantsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+			renderParticipantsFromCache();
+			
+			// Update participant count display
+			el('participantsCount').innerText = snap.size;
+			
+			// Update both participant count and certificate count in event document
+			const certificatesCount = snap.docs.filter(doc => {
+				const data = doc.data();
+				return data.certificateStatus === 'downloaded';
+			}).length;
+			
+			await db.collection('events').doc(selectedEvent.id).set({
+				participantsCount: snap.size,
+				certificatesCount: certificatesCount
+			}, {merge: true}); 
+			
+			// Restore sort state after loading participants
+			updateSortIcons();
+			
+		} catch (error) {
+			const extraFields = (selectedEvent?.data?.participantFields || []);
+			const totalColumns = 4 + extraFields.length;
+			tbody.innerHTML = `
+				<tr><td colspan="${totalColumns}" class="empty-state">
+					<i class="fa-solid fa-exclamation-triangle text-danger"></i>
+					<h6 class="mt-2">Error loading participants</h6>
+					<p class="mb-0 text-danger">${error.message}</p>
+				</td></tr>`;
+		}
+	}
+
+	const participantModal = new bootstrap.Modal(document.getElementById('participantModal'));
+	function openParticipantModal(id){ 
+		if(!selectedEvent) return showAlert('Select an event first', 'warning'); 
+		
+		el('participantForm').reset(); 
+		el('participantId').value = id || ''; 
+		el('participantEventId').value = selectedEvent.id; 
+		
+		// Update modal title
+		const title = el('participantModal').querySelector('.modal-title');
+		if (title) {
+			title.innerHTML = `<i class="fa-solid fa-${id ? 'user-edit' : 'user-plus'} me-2"></i>${id ? 'Edit' : 'Add'} Participant`;
+		}
+		
+		// Handle custom fields
+		const extra = (selectedEvent.data.participantFields || []);
+		const customFieldsSection = el('customFieldsSection');
+		const customFieldsContainer = el('customFieldsContainer');
+		
+		if (extra.length > 0) {
+			customFieldsSection.style.display = 'block';
+			customFieldsContainer.innerHTML = '';
+			
+			extra.forEach(f => {
+				const wrapper = document.createElement('div');
+				wrapper.className = 'col-md-6 mb-3';
+				wrapper.innerHTML = `
+					<label class="form-label fw-semibold">${f.label} *</label>
+					<input class="form-control" id="pf_${f.key}" placeholder="Enter ${f.label.toLowerCase()}" required>
+				`;
+				customFieldsContainer.appendChild(wrapper);
+			});
+		} else {
+			customFieldsSection.style.display = 'none';
+		}
+		
+		// Load existing data if editing
+		if(id){ 
+			db.collection('events').doc(selectedEvent.id).collection('participants').doc(id).get().then(d => { 
+				const p = d.data(); 
+				el('participantName').value = p.name || ''; 
+				el('participantEmail').value = p.email || ''; 
+				
+				// Load custom fields
+				(selectedEvent.data.participantFields || []).forEach(f => { 
+					const v = (p.additionalFields || {})[f.key] || ''; 
+					const input = document.getElementById('pf_' + f.key); 
+					if(input) input.value = v; 
+				}); 
+				
+				participantModal.show(); 
+			}); 
+		} else { 
+			participantModal.show(); 
+		} 
+	}
+	window.openParticipantModal=openParticipantModal;
+
+	async function saveParticipant(){ 
+		const eventId=el('participantEventId').value; 
+		const id=el('participantId').value||undefined; 
+		const email = el('participantEmail').value.trim().toLowerCase();
+		
+		const payload={ 
+			name:el('participantName').value.trim(), 
+			email: email, 
+			certificateStatus: 'pending', // Always set certificate status
+			updatedAt: firebase.firestore.FieldValue.serverTimestamp() 
+		}; 
+		
+		if(!payload.name||!payload.email) return showAlert('Name and email are required', 'warning'); 
+		
+		// Check for duplicate email (only for new participants)
+		if (!id) {
+			const existing = await db.collection('events').doc(eventId).collection('participants').where('email', '==', email).limit(1).get();
+			if (!existing.empty) {
+				showAlert('A participant with this email already exists in this event.', 'warning');
+				return;
+			}
+		}
+		
+		// collect extras
+		const additionalFields = {}; 
+		const missingFields = []; 
+		(selectedEvent.data.participantFields || []).forEach(f => { 
+			const input = document.getElementById('pf_' + f.key); 
+			if(input){ 
+				const value = input.value.trim(); 
+				if(!value) missingFields.push(f.label); 
+				additionalFields[f.key] = value; 
+			}
+		}); 
+		
+		if(missingFields.length > 0) return showAlert(`Please fill in all required fields: ${missingFields.join(', ')}`, 'warning'); 
+		payload.additionalFields = additionalFields;
+		
+		try{ 
+			if(id){ 
+				await db.collection('events').doc(eventId).collection('participants').doc(id).set(payload,{merge:true}); 
+			} else { 
+				payload.createdAt=firebase.firestore.FieldValue.serverTimestamp(); 
+				await db.collection('events').doc(eventId).collection('participants').add(payload); 
+			} 
+			participantModal.hide(); 
+			loadParticipants(); 
+		}catch(e){ 
+			showAlert('Failed: '+e.message, 'danger'); 
+		} 
+	}
+	window.saveParticipant=saveParticipant;
+
+	function confirmDeleteParticipant(id,name){ showConfirm(`Delete participant "${name}"?`, async ()=>{ await db.collection('events').doc(selectedEvent.id).collection('participants').doc(id).delete(); loadParticipants(); }); }
+	window.confirmDeleteParticipant=confirmDeleteParticipant;
+
+	// ======== BULK CSV UPLOAD ========
+	const bulkModal = new bootstrap.Modal(document.getElementById('bulkUploadModal'));
+	let bulkRows = [];
+	let existingByEmail = {}; // email -> docId
+
+	async function openBulkUploadModal(){
+		if(!selectedEvent){ showAlert('Select an event first', 'warning'); return; }
+		el('bulkCsvInput').value = '';
+		el('bulkPreview').classList.add('d-none');
+		el('bulkHead').innerHTML = '';
+		el('bulkBody').innerHTML = '';
+		el('bulkImportBtn').disabled = true;
+		bulkRows = [];
+		// Prefetch existing participants to detect duplicates and support updates
+		existingByEmail = {};
+		const snap = await db.collection('events').doc(selectedEvent.id).collection('participants').get();
+		snap.forEach(doc=>{ const p = doc.data(); if(p && p.email){ existingByEmail[(p.email||'').toLowerCase()] = doc.id; } });
+		bulkModal.show();
+	}
+	window.openBulkUploadModal = openBulkUploadModal;
+
+	// Lightweight CSV parser (no external deps)
+	function parseCsv(text){
+		const lines = text.split(/\r?\n/).filter(l=>l.trim().length>0);
+		if(lines.length === 0) return { headers: [], rows: [] };
+		const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
+		const rows = lines.slice(1).map(line=>{
+			const cols = line.split(',');
+			const obj = {};
+			headers.forEach((h,i)=> obj[h] = (cols[i]||'').trim());
+			return obj;
+		}).filter(r=>r.email||r.name);
+		return { headers, rows };
+	}
+
+	el('bulkCsvInput').addEventListener('change', (e)=>{
+		const file = e.target.files && e.target.files[0];
+		if(!file) return;
+		const reader = new FileReader();
+		reader.onload = ()=>{
+			const { headers, rows } = parseCsv(String(reader.result||''));
+			if(headers.length===0){ showAlert('Empty CSV', 'warning'); return; }
+			// detect duplicates inside CSV by email
+			const csvCounts = {};
+			rows.forEach(r=>{ const em=(r.email||'').toLowerCase(); if(!em) return; csvCounts[em]=(csvCounts[em]||0)+1; });
+			bulkRows = rows.map(r=>({
+				name: r.name||'',
+				email: (r.email||'').toLowerCase(),
+				_dupCSV: csvCounts[(r.email||'').toLowerCase()] > 1,
+				_exists: !!existingByEmail[(r.email||'').toLowerCase()],
+				// Store all other columns for dynamic field mapping
+				...Object.fromEntries(
+					Object.entries(r).filter(([key]) => !['name', 'email'].includes(key))
+				)
+			})).filter(r=>r.email && r.name);
+			// Render preview
+			const extraFields = (selectedEvent.data.participantFields||[]);
+			const extraHeaders = extraFields.map(f=>`<th>${f.label}</th>`).join('');
+			el('bulkHead').innerHTML = `<tr><th>Name</th><th>Email</th>${extraHeaders}<th>Note</th></tr>`;
+			el('bulkBody').innerHTML = bulkRows.slice(0,200).map(r=>{
+				const note = r._exists ? 'Will update existing' : (r._dupCSV ? 'Duplicate in CSV' : 'New');
+				const rowClass = r._exists ? 'table-warning' : (r._dupCSV ? 'table-danger' : '');
+				const extraCells = extraFields.map(f=>`<td>${r[f.key]||''}</td>`).join('');
+				return `<tr class="${rowClass}"><td>${r.name}</td><td>${r.email}</td>${extraCells}<td>${note}</td></tr>`;
+			}).join('');
+			el('bulkPreview').classList.remove('d-none');
+			el('bulkImportBtn').disabled = bulkRows.length===0;
+		};
+		reader.readAsText(file);
+	});
+
+	async function uploadBulkParticipants(){
+		if(!selectedEvent) return showAlert('Select an event first', 'warning');
+		if(bulkRows.length===0) return showAlert('No valid rows to import', 'warning');
+		const CHUNK = 400; // Firestore batch limit 500; keep headroom
+		let imported = 0;
+		const extras = (selectedEvent.data.participantFields||[]);
+		for(let i=0;i<bulkRows.length;i+=CHUNK){
+			const batch = db.batch();
+			bulkRows.slice(i,i+CHUNK).forEach(row=>{
+				const col = db.collection('events').doc(selectedEvent.id).collection('participants');
+				const existingId = existingByEmail[row.email];
+				const additionalFields = {};
+				extras.forEach(f=>{ if(row[f.key] !== undefined) additionalFields[f.key] = row[f.key]; });
+				const base = { 
+			name: row.name, 
+			email: row.email, 
+			certificateStatus: 'pending', // Always set certificate status
+			additionalFields, 
+			updatedAt: firebase.firestore.FieldValue.serverTimestamp() 
+		};
+				if(existingId){
+					const ref = col.doc(existingId);
+					batch.set(ref, base, { merge: true });
+				} else {
+					const ref = col.doc();
+					batch.set(ref, { ...base, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+				}
+			});
+			await batch.commit();
+			imported += Math.min(CHUNK, bulkRows.length - i);
+		}
+		bulkModal.hide();
+		await loadParticipants();
+		showAlert(`Imported ${imported} participants`, 'success');
+	}
+	window.uploadBulkParticipants = uploadBulkParticipants;
+
+	async function loadAdmins(){ 
+		const tbody = document.querySelector('#adminsTable tbody'); 
+		if(!tbody) return; 
+		
+		try {
+			const snap = await db.collection('admins').get(); 
+			const rows = []; 
+			
+			snap.forEach(doc => {
+				const a = doc.data(); 
+				const createdAt = a.createdAt ? new Date(a.createdAt.seconds * 1000) : null;
+				
+				rows.push(`<tr>
+					<td>
+						<div class="d-flex align-items-center">
+							<div class="admin-avatar me-3">
+								<i class="fa-solid fa-user-shield fa-lg text-success"></i>
+                        </div>
+							<div class="admin-info">
+								<div class="fw-semibold text-dark">${a.email || 'No email'}</div>
+								<div class="text-muted small">Admin ID: ${doc.id}</div>
+                    </div>
+                </div>
+					</td>
+					<td>
+						<div class="date-info">
+							<div class="fw-medium text-dark">
+								${createdAt ? createdAt.toLocaleDateString('en-US', { 
+									year: 'numeric', 
+									month: 'short', 
+									day: 'numeric' 
+								}) : 'Not set'}
+                </div>
+							<div class="text-muted small">
+								${createdAt ? createdAt.toLocaleTimeString('en-US', { 
+									hour: '2-digit', 
+									minute: '2-digit' 
+								}) : ''}
+            </div>
+        </div>
+					</td>
+					<td class="text-end">
+						<div class="action-buttons">
+							<button class="btn btn-sm btn-outline-danger" onclick="removeAdmin('${doc.id}')" title="Remove Admin">
+								<i class="fa-regular fa-trash-can me-1"></i>Remove
+							</button>
+    </div>
+					</td>
+				</tr>`);
+			}); 
+			
+			if (rows.length === 0) {
+				tbody.innerHTML = `
+					<tr><td colspan="3" class="empty-state">
+						<div class="text-center py-4">
+							<i class="fa-solid fa-user-shield fa-2x text-muted mb-3"></i>
+							<h6 class="text-muted">No admins yet</h6>
+							<p class="text-muted mb-0">You are the first admin</p>
+                </div>
+					</td></tr>`;
+			} else {
+				tbody.innerHTML = rows.join('');
+			}
+		} catch (error) {
+			tbody.innerHTML = `
+				<tr><td colspan="3" class="empty-state">
+					<div class="text-center py-4">
+						<i class="fa-solid fa-exclamation-triangle fa-2x text-danger mb-3"></i>
+						<h6 class="text-danger">Error loading admins</h6>
+						<p class="text-danger mb-0">${error.message}</p>
+                                </div>
+				</td></tr>`;
+		}
+	}
+	async function removeAdmin(uid){ 
+		if(currentUser && currentUser.uid===uid){ 
+			showConfirm('Remove your own admin access? This action cannot be undone.', async ()=>{
+				await db.collection('admins').doc(uid).delete(); 
+				loadAdmins(); 
+			});
+			return; 
+		} 
+		showConfirm('Remove this admin user? This action cannot be undone.', async ()=>{
+			await db.collection('admins').doc(uid).delete(); 
+			loadAdmins(); 
+		});
+	}
+	window.removeAdmin=removeAdmin;
+
+	function showConfirm(message,onConfirm){ el('confirmDeleteMessage').innerText=message; const m=new bootstrap.Modal(el('confirmDeleteModal')); el('confirmDeleteBtn').onclick=async()=>{ m.hide(); await onConfirm(); }; m.show(); }
+
+	// Invite by email: creates invites/{email}
+	async function inviteAdminByEmail(){
+		const email = (el('newAdminEmail').value||'').trim().toLowerCase();
+		if(!email) return showAlert('Email required', 'warning');
+		// Prevent inviting someone who is already an admin
+		const existing = await db.collection('admins').where('email','==',email).limit(1).get();
+		if(!existing.empty){ showAlert('This email already has admin access.', 'warning'); el('newAdminEmail').value=''; return; }
+		// Prevent duplicate invites
+		const inviteRef = db.collection('invites').doc(email);
+		const inviteSnap = await inviteRef.get();
+		if(inviteSnap.exists){ showAlert('An invite for this email already exists.', 'warning'); return; }
+		await inviteRef.set({ email, createdAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+		el('newAdminEmail').value='';
+		loadInvites();
+		showAlert('Invite added. When this email signs in, they will be promoted automatically.', 'success');
+	}
+	window.inviteAdminByEmail = inviteAdminByEmail;
+
+	async function loadInvites(){ 
+		const tbody = document.querySelector('#invitesTable tbody'); 
+		if(!tbody) return; 
+		
+		try {
+			const snap = await db.collection('invites').get(); 
+			const rows = []; 
+			
+			snap.forEach(doc => {
+				const i = doc.data(); 
+				const createdAt = i.createdAt ? new Date(i.createdAt.seconds * 1000) : null;
+				
+				rows.push(`<tr>
+					<td>
+						<div class="d-flex align-items-center">
+							<div class="invite-avatar me-3">
+								<i class="fa-solid fa-envelope fa-lg text-warning"></i>
+                                    </div>
+							<div class="invite-info">
+								<div class="fw-semibold text-dark">${i.email || 'No email'}</div>
+								<div class="text-muted small">Pending invitation</div>
+                                </div>
+                            </div>
+					</td>
+					<td>
+						<div class="date-info">
+							<div class="fw-medium text-dark">
+								${createdAt ? createdAt.toLocaleDateString('en-US', { 
+									year: 'numeric', 
+									month: 'short', 
+									day: 'numeric' 
+								}) : 'Not set'}
+                        </div>
+							<div class="text-muted small">
+								${createdAt ? createdAt.toLocaleTimeString('en-US', { 
+									hour: '2-digit', 
+									minute: '2-digit' 
+								}) : ''}
+                    </div>
+                </div>
+					</td>
+					<td class="text-end">
+						<div class="action-buttons">
+							<button class="btn btn-sm btn-outline-danger" onclick="removeInvite('${i.email}')" title="Remove Invite">
+								<i class="fa-regular fa-trash-can me-1"></i>Remove
+							</button>
+            </div>
+					</td>
+				</tr>`);
+			}); 
+			
+			if (rows.length === 0) {
+				tbody.innerHTML = `
+					<tr><td colspan="3" class="empty-state">
+						<div class="text-center py-4">
+							<i class="fa-solid fa-envelope-open fa-2x text-muted mb-3"></i>
+							<h6 class="text-muted">No pending invites</h6>
+							<p class="text-muted mb-0">All invitations have been accepted</p>
+        </div>
+					</td></tr>`;
+			} else {
+				tbody.innerHTML = rows.join('');
+			}
+		} catch (error) {
+			tbody.innerHTML = `
+				<tr><td colspan="3" class="empty-state">
+					<div class="text-center py-4">
+						<i class="fa-solid fa-exclamation-triangle fa-2x text-danger mb-3"></i>
+						<h6 class="text-danger">Error loading invites</h6>
+						<p class="text-danger mb-0">${error.message}</p>
+    </div>
+				</td></tr>`;
+		}
+	}
+	async function removeInvite(email){ 
+		showConfirm(`Remove invitation for ${email}? This action cannot be undone.`, async ()=>{
+			await db.collection('invites').doc(email).delete(); 
+			loadInvites(); 
+		});
+	}
+	window.removeInvite = removeInvite;
+
+	// ===== Event custom participant fields =====
+	
+	// Helper function to get certificate status display
+	function getCertificateStatusDisplay(certificateStatus) {
+		if (certificateStatus === 'downloaded') {
+			return `<span class="status-badge success"><i class="fa-solid fa-check"></i>Downloaded</span>`;
+        } else {
+			return `<span class="status-badge pending"><i class="fa-solid fa-clock"></i>Pending</span>`;
+		}
+	}
+	
+	function renderEventFields(fields){
+		const container = document.getElementById('eventFieldsContainer');
+		if(!container) return;
+		
+		if (!fields || fields.length === 0) {
+			container.innerHTML = `
+				<div class="text-center text-muted py-3">
+					<i class="fa-solid fa-plus-circle fa-2x mb-2"></i>
+					<p class="mb-0">No custom fields defined yet</p>
+				</div>`;
+			return;
+		}
+		
+		container.innerHTML = '';
+		fields.forEach((f, idx) => {
+			const row = document.createElement('div');
+			row.className = 'row g-3 align-items-center mb-3 p-3 border rounded bg-light';
+			row.innerHTML = `
+				<div class="col-md-5">
+					<label class="form-label small fw-semibold">Field Label</label>
+					<input class="form-control" placeholder="e.g., Role, Organization" value="${f.label || ''}" data-field="label" data-index="${idx}">
+				</div>
+				<div class="col-md-5">
+					<label class="form-label small fw-semibold">Field Key</label>
+					<input class="form-control" placeholder="e.g., role, organization" value="${f.key || ''}" data-field="key" data-index="${idx}">
+				</div>
+				<div class="col-md-2 text-end">
+					<button class="btn btn-sm btn-outline-danger" onclick="removeEventField(${idx})" title="Remove Field">
+						<i class="fa-regular fa-trash-can"></i>
+					</button>
+				</div>
+			`;
+			container.appendChild(row);
+		});
+	}
+	function getEventFieldsFromUI(){
+		const container = document.getElementById('eventFieldsContainer');
+		if(!container) return [];
+		const inputs = container.querySelectorAll('input[data-field]');
+		const rows = [];
+		inputs.forEach((input)=>{
+			const idx = Number(input.getAttribute('data-index'));
+			const field = input.getAttribute('data-field');
+			rows[idx] = rows[idx] || { label:'', key:'' };
+			rows[idx][field] = input.value.trim();
+		});
+		return (rows||[]).filter(r=>r && r.label && r.key);
+	}
+	function addEventFieldRow(){
+		const current = getEventFieldsFromUI();
+		current.push({ label: '', key: '' });
+		renderEventFields(current);
+	}
+	function removeEventField(index){
+		const current = getEventFieldsFromUI();
+		current.splice(index, 1);
+		renderEventFields(current);
+	}
+	function normalizeEventFields(){
+		const current = getEventFieldsFromUI().map(f => ({ 
+			label: f.label, 
+			key: (f.key || f.label || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '') 
+		}));
+		renderEventFields(current);
+	}
+	window.addEventFieldRow = addEventFieldRow;
+	window.removeEventField = removeEventField;
+	window.normalizeEventFields = normalizeEventFields;
+
+	// ===== CSV Template and Export Functions =====
+	
+	// Download CSV template based on event fields
+	function downloadCsvTemplate() {
+		if (!selectedEvent) {
+			showAlert('Please select an event first', 'warning');
+			return;
+		}
+		
+		const fields = selectedEvent.data?.participantFields || [];
+		const headers = ['name', 'email', ...fields.map(f => f.key)];
+		
+		// Create sample row with placeholders
+		const sampleRow = ['John Doe', 'john@example.com', ...fields.map(f => `[${f.label}]`)];
+		
+		// Create CSV content
+		const csvContent = [headers.join(','), sampleRow.join(',')].join('\n');
+		
+		// Create and download file
+		const blob = new Blob([csvContent], { type: 'text/csv' });
+		const url = window.URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `${selectedEvent.data.title.replace(/[^a-zA-Z0-9]/g, '_')}_template.csv`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		window.URL.revokeObjectURL(url);
+	}
+	window.downloadCsvTemplate = downloadCsvTemplate;
+	
+	// Export participants list as CSV
+	async function exportParticipantsCsv() {
+		if (!selectedEvent) {
+			showAlert('Please select an event first', 'warning');
+			return;
+		}
+		
+		try {
+			const snap = await db.collection('events').doc(selectedEvent.id).collection('participants').orderBy('name').get();
+			if (snap.empty) {
+				showAlert('No participants to export', 'warning');
+				return;
+			}
+			
+			const fields = selectedEvent.data?.participantFields || [];
+			const headers = ['name', 'email', ...fields.map(f => f.key), 'certificateStatus'];
+			
+			const rows = [];
+			snap.forEach(doc => {
+				const p = doc.data();
+				const row = [
+					p.name || '',
+					p.email || '',
+					...fields.map(f => (p.additionalFields || {})[f.key] || ''),
+					(p.certificateStatus || 'pending')
+				];
+				rows.push(row);
+			});
+			
+			// Create CSV content
+			const csvContent = [headers.join(','), ...rows.map(r => r.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))].join('\n');
+			
+			// Create and download file
+			const blob = new Blob([csvContent], { type: 'text/csv' });
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `${selectedEvent.data.title.replace(/[^a-zA-Z0-9]/g, '_')}_participants_${new Date().toISOString().split('T')[0]}.csv`;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			window.URL.revokeObjectURL(url);
+			
+		} catch (error) {
+			showAlert('Failed to export: ' + error.message, 'danger');
+		}
+	}
+	window.exportParticipantsCsv = exportParticipantsCsv;
+
+	function renderParticipantsTableHead(){
+		const thead = document.querySelector('#participantsTable thead tr');
+		if(!thead) return;
+		const extra = (selectedEvent?.data?.participantFields) || [];
+		
+		// Build header with custom fields as separate columns
+		let headerHTML = `
+			<th role="button" onclick="setParticipantsSort('name')" class="sortable-header">
+				Name <i class="fa-solid fa-sort ms-1" id="sort-name"></i>
+			</th>
+			<th role="button" onclick="setParticipantsSort('email')" class="sortable-header">
+				Email <i class="fa-solid fa-sort ms-1" id="sort-email"></i>
+			</th>`;
+		
+		// Add custom field columns
+		extra.forEach(field => {
+			headerHTML += `
+				<th class="text-center">
+					${field.label}
+				</th>`;
+		});
+		
+		headerHTML += `
+			<th role="button" onclick="setParticipantsSort('certificateStatus')" class="sortable-header">
+				Certificate Status <i class="fa-solid fa-sort ms-1" id="sort-certificateStatus"></i>
+			</th>
+			<th class="text-end">Actions</th>`;
+		
+		thead.innerHTML = headerHTML;
+		
+		// Restore sort icons after rendering headers
+		updateSortIcons();
+	}
+
+	let participantsCache = [];
+	let participantsSortKey = 'name';
+	let participantsSortDir = 'asc';
+
+	function setParticipantsSort(key){
+		if(participantsSortKey === key){
+			participantsSortDir = participantsSortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			participantsSortKey = key;
+			participantsSortDir = 'asc';
+		}
+		updateSortIcons();
+		renderParticipantsFromCache();
+	}
+	window.setParticipantsSort = setParticipantsSort;
+	
+	function updateSortIcons(){
+		const columns = ['name', 'email', 'certificateStatus'];
+		columns.forEach(col => {
+			const icon = document.getElementById(`sort-${col}`);
+			if(icon){
+				if(col === participantsSortKey){
+					icon.className = `fa-solid ${participantsSortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} ms-1 text-primary`;
+				} else {
+					icon.className = 'fa-solid fa-sort ms-1 text-muted';
+				}
+			}
+		});
+	}
+
+	function getParticipantsFilters(){
+		const q = (document.getElementById('participantsSearch')?.value || '').trim().toLowerCase();
+		const status = (document.getElementById('participantsStatusFilter')?.value || '').trim();
+		return { q, status };
+	}
+
+	function renderParticipantsFromCache(){
+		const tbody = document.querySelector('#participantsTable tbody');
+		if(!tbody) return;
+		const { q, status } = getParticipantsFilters();
+		let data = participantsCache.slice();
+		// search
+		if(q){
+			data = data.filter(p => (p.name||'').toLowerCase().includes(q) || (p.email||'').toLowerCase().includes(q));
+		}
+		// filter by status
+		if(status){
+			data = data.filter(p => (p.certificateStatus||'') === status);
+		}
+		// sort
+		data.sort((a,b)=>{
+			const av = (a[participantsSortKey]||'').toString().toLowerCase();
+			const bv = (b[participantsSortKey]||'').toString().toLowerCase();
+			if(av < bv) return participantsSortDir==='asc' ? -1 : 1;
+			if(av > bv) return participantsSortDir==='asc' ? 1 : -1;
+			return 0;
+		});
+		// render
+		const extraFields = (selectedEvent?.data?.participantFields || []);
+		let rows = data.map(({id, name, email, certificateStatus, additionalFields})=>{
+			let rowHTML = `
+				<td>
+					<div class="fw-semibold">${name||''}</div>
+				</td>
+				<td>
+					<div class="d-flex align-items-center gap-2">
+						<i class="fa-solid fa-envelope text-muted"></i>
+						<span>${email||''}</span>
+					</div>
+				</td>`;
+			
+			// Add custom field columns
+			extraFields.forEach(field => {
+				const value = (additionalFields || {})[field.key] || '';
+				const badgeClass = value ? 'custom-field-badge' : 'custom-field-badge empty';
+				rowHTML += `
+					<td class="text-center">
+						<span class="${badgeClass}" title="${field.label}: ${value || 'Not set'}">${value || 'Not set'}</span>
+					</td>`;
+			});
+			
+			rowHTML += `
+				<td>${getCertificateStatusDisplay(certificateStatus)}</td>
+				<td class="text-end">
+					<div class="action-buttons">
+						<button class="btn btn-sm btn-outline-primary" onclick="openParticipantModal('${id}')" title="Edit Participant">
+							<i class="fa-regular fa-pen-to-square"></i>
+						</button>
+						<button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteParticipant('${id}','${(name||email||'').replace(/\"/g,'\\\"')}')" title="Delete Participant">
+							<i class="fa-regular fa-trash-can"></i>
+						</button>
+					</div>
+				</td>
+			</tr>`;
+			
+			return rowHTML;
+		}).join('');
+		
+		// Add summary row if there are custom fields
+		if (extraFields.length > 0) {
+			const summaryRow = `
+				<tr class="table-light">
+					<td colspan="${2 + extraFields.length}" class="text-center text-muted">
+						<small><i class="fas fa-info-circle me-1"></i>Showing ${extraFields.length} custom fields: ${extraFields.map(f => f.label).join(', ')}</small>
+					</td>
+					<td colspan="2"></td>
+				</tr>`;
+			rows += summaryRow;
+		}
+		
+		tbody.innerHTML = rows || '';
+		el('participantsCount').innerText = data.length;
+	}
+
+	// wire up search/filter inputs
+	document.addEventListener('input', (e)=>{
+		const t = e.target;
+		if(t && (t.id==='participantsSearch' || t.id==='participantsStatusFilter')){
+			renderParticipantsFromCache();
+		}
+	});
+    </script>
+</body>
+</html>
+
+
