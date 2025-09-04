@@ -5,6 +5,12 @@ RUBY_VERSION = "3.3.6"
   publish = "_site"
   command = "bundle exec jekyll build"
 
+[[redirects]]
+  from = "https://rsacertify.netlify.app/*"
+  to = "https://certify.rsamdio.org/:splat"
+  status = 301
+  force = true
+
 # Security Headers
 [[headers]]
   for = "/*"
