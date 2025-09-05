@@ -987,7 +987,7 @@ layout: default
     document.getElementById('certificateForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        const email = document.getElementById('participantEmail').value.trim();
+        const email = document.getElementById('participantEmail').value.trim().toLowerCase();
         if (!email) return;
         
         const searchBtn = document.getElementById('searchBtn');

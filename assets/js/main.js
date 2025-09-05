@@ -66,7 +66,7 @@ class CertificateManager {
             
             // Search for both email addresses and redeem codes in the 'email' field
             // Since the database field is still 'email' but can contain either emails or codes
-            const searchValue = isValidEmail ? email.toLowerCase() : email;
+            const searchValue = email.toLowerCase();
             
             const querySnapshot = await collectionRef
                 .where('email', '==', searchValue)

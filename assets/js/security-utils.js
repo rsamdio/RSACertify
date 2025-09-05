@@ -19,7 +19,7 @@ class SecurityUtils {
             case 'email':
                 return this.validateEmail(sanitized) ? sanitized.toLowerCase() : '';
             case 'redeemCode':
-                return this.validateRedeemCode(sanitized) ? sanitized : '';
+                return this.validateRedeemCode(sanitized) ? sanitized.toLowerCase() : '';
             case 'name':
                 return this.validateName(sanitized) ? sanitized : '';
             case 'url':
