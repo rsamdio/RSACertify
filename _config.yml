@@ -51,9 +51,6 @@ exclude:
 
 # Include files
 include:
-  - _events
-  - _posts
-  - _pages
   - assets
   - admin
   - .well-known
