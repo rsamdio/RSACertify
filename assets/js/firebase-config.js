@@ -33,7 +33,7 @@ if (typeof firebase !== 'undefined') {
         
         db.settings({
             cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-        }, { merge: true });
+        });
         
         auth.onAuthStateChanged((user) => {
             if (user) {
