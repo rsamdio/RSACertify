@@ -1030,11 +1030,33 @@
 			const provider = new firebase.auth.GoogleAuthProvider();
 			provider.addScope('email');
 			
-			// Try popup first, fallback to redirect if blocked
-			try {
-				await auth.signInWithPopup(provider);
-			} catch (popupError) {
-				// Fallback to redirect if popup fails
+			// Check if popups are likely to be blocked
+			const isPopupBlocked = () => {
+				try {
+					const popup = window.open('', '_blank', 'width=1,height=1');
+					if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+						return true;
+					}
+					popup.close();
+					return false;
+				} catch (e) {
+					return true;
+				}
+			};
+			
+			// Try popup first if not blocked, otherwise use redirect
+			if (!isPopupBlocked()) {
+				try {
+					await auth.signInWithPopup(provider);
+				} catch (popupError) {
+					console.log('Popup blocked or failed, using redirect:', popupError.message);
+					// Show user-friendly message about popup being blocked
+					showAlert('Popup blocked. Redirecting to Google sign-in...', 'info', 3000);
+					await auth.signInWithRedirect(provider);
+				}
+			} else {
+				// Popup is blocked, use redirect directly
+				showAlert('Redirecting to Google sign-in...', 'info', 2000);
 				await auth.signInWithRedirect(provider);
 			}
 		} catch (error) {
