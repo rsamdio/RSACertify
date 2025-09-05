@@ -950,17 +950,35 @@
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 	<script src="/assets/js/firebase-config.js"></script>
 	<script>
-	const auth = firebase.auth();
-	const db = firebase.firestore();
+	// Wait for Firebase to be fully initialized
+	let auth, db;
 	let currentUser = null;
 	let selectedEvent = null;
+	
+	// Initialize Firebase when ready
+	function initializeFirebase() {
+		console.log('Initializing Firebase...');
+		if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+			console.log('Firebase is ready, setting up auth...');
+			auth = firebase.auth();
+			db = firebase.firestore();
+			setupAuth();
+		} else {
+			console.log('Firebase not ready, retrying...');
+			// Retry if Firebase not ready
+			setTimeout(initializeFirebase, 100);
+		}
+	}
+	
+	// Setup authentication once Firebase is ready
+	function setupAuth() {
+		console.log('Setting up authentication...');
+		function el(id){return document.getElementById(id)}
 
-	function el(id){return document.getElementById(id)}
+		function showApp(){ document.getElementById('gateScreen').style.display='none'; document.getElementById('appContainer').style.display='block'; }
+		function showGate(message){ document.getElementById('appContainer').style.display='none'; const g=document.getElementById('gateScreen'); g.style.display='block'; if(message){ const m=document.getElementById('gateMessage'); if(m) m.textContent=message; }}
 
-	function showApp(){ document.getElementById('gateScreen').style.display='none'; document.getElementById('appContainer').style.display='block'; }
-	function showGate(message){ document.getElementById('appContainer').style.display='none'; const g=document.getElementById('gateScreen'); g.style.display='block'; if(message){ const m=document.getElementById('gateMessage'); if(m) m.textContent=message; }}
-
-	auth.onAuthStateChanged(async (user)=>{
+		auth.onAuthStateChanged(async (user)=>{
 		currentUser = user;
 		if(!user){ 
 			showGate('Sign in to continue.'); 
@@ -1025,49 +1043,61 @@
 	}).catch((error) => {
 	});
 
-	async function signIn() {
-		try {
-			const provider = new firebase.auth.GoogleAuthProvider();
-			provider.addScope('email');
-			
-			// Check if popups are likely to be blocked
-			const isPopupBlocked = () => {
-				try {
-					const popup = window.open('', '_blank', 'width=1,height=1');
-					if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+		async function signIn() {
+			try {
+				const provider = new firebase.auth.GoogleAuthProvider();
+				provider.addScope('email');
+				
+				// Improved popup detection
+				const isPopupBlocked = () => {
+					try {
+						// Test popup with proper dimensions and features
+						const popup = window.open('', '_blank', 'width=400,height=600,scrollbars=yes,resizable=yes');
+						if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+							return true;
+						}
+						// Test if we can access the popup
+						try {
+							popup.document.write('<html><body>Test</body></html>');
+							popup.close();
+							return false;
+						} catch (e) {
+							popup.close();
+							return true;
+						}
+					} catch (e) {
 						return true;
 					}
-					popup.close();
-					return false;
-				} catch (e) {
-					return true;
-				}
-			};
-			
-			// Try popup first if not blocked, otherwise use redirect
-			if (!isPopupBlocked()) {
+				};
+				
+				// Always try popup first for better UX
 				try {
+					console.log('Attempting popup authentication...');
+					showAlert('Opening Google sign-in popup...', 'info', 2000);
 					await auth.signInWithPopup(provider);
+					console.log('Popup authentication successful');
 				} catch (popupError) {
-					console.log('Popup blocked or failed, using redirect:', popupError.message);
-					// Show user-friendly message about popup being blocked
-					showAlert('Popup blocked. Redirecting to Google sign-in...', 'info', 3000);
+					console.log('Popup failed, trying redirect:', popupError.message);
+					// Check if it's a popup blocked error
+					if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
+						showAlert('Popup blocked. Redirecting to Google sign-in...', 'warning', 3000);
+					} else {
+						showAlert('Popup failed. Redirecting to Google sign-in...', 'info', 3000);
+					}
 					await auth.signInWithRedirect(provider);
 				}
-			} else {
-				// Popup is blocked, use redirect directly
-				showAlert('Redirecting to Google sign-in...', 'info', 2000);
-				await auth.signInWithRedirect(provider);
+			} catch (error) {
+				console.error('Authentication error:', error);
+				showAlert('Authentication failed: ' + error.message, 'danger');
 			}
-		} catch (error) {
-			showAlert('Authentication failed: ' + error.message, 'danger');
 		}
-	}
-	function signOut(){ auth.signOut(); }
-	window.signIn=signIn; window.signOut=signOut;
-
-	// Enhanced alert system for admin panel
-	function showAlert(message, type = 'info', duration = 5000) {
+		
+		function signOut(){ 
+			auth.signOut(); 
+		}
+		
+		// Enhanced alert system for admin panel
+		function showAlert(message, type = 'info', duration = 5000) {
 		const alertDiv = document.createElement('div');
 		alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
 		alertDiv.style.cssText = `
@@ -1104,7 +1134,18 @@
 				alertDiv.remove();
 			}
 		}, duration);
+		}
+		
+		// Make functions globally available
+		window.signIn = signIn; 
+		window.signOut = signOut;
 	}
+	
+	// Start Firebase initialization
+	initializeFirebase();
+
+	// Global utility functions
+	function el(id){return document.getElementById(id)}
 
 	function switchTab(name){
 		el('eventsSection').classList.toggle('d-none', name!=='events');

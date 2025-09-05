@@ -23,30 +23,48 @@ function validateFirebaseConfig(config) {
     return true;
 }
 
-if (typeof firebase !== 'undefined') {
-    try {
-        validateFirebaseConfig(firebaseConfig);
-        firebase.initializeApp(firebaseConfig);
-        
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        
-        db.settings({
-            cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-        });
-        
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                db.enableNetwork();
-            } else {
-                // Don't disable network for anonymous users - they still need to access Firestore
-                // db.disableNetwork();
+// Initialize Firebase when ready
+function initializeFirebaseApp() {
+    if (typeof firebase !== 'undefined') {
+        try {
+            validateFirebaseConfig(firebaseConfig);
+            
+            // Check if app is already initialized
+            if (firebase.apps.length === 0) {
+                firebase.initializeApp(firebaseConfig);
             }
-        });
-    } catch (error) {
-        throw error;
+            
+            const auth = firebase.auth();
+            const db = firebase.firestore();
+            
+            // Configure Firestore settings
+            db.settings({
+                cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+            });
+            
+            // Set up auth state listener
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    db.enableNetwork();
+                } else {
+                    // Don't disable network for anonymous users - they still need to access Firestore
+                    // db.disableNetwork();
+                }
+            });
+            
+            console.log('Firebase initialized successfully');
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            throw error;
+        }
+    } else {
+        console.warn('Firebase not loaded yet, retrying...');
+        setTimeout(initializeFirebaseApp, 100);
     }
 }
+
+// Start initialization
+initializeFirebaseApp();
 
 window.firebaseConfig = {
     projectId: firebaseConfig.projectId,
