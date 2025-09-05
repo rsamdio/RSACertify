@@ -439,7 +439,7 @@ class Utils {
         }
         
         element.disabled = true;
-        element.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>${loadingText}`;
+        element.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-2"></i>${loadingText}`;
     }
     
     static hideLoading(element) {
@@ -481,7 +481,7 @@ class Utils {
         
         alertDiv.innerHTML = `
             <div class="d-flex align-items-start">
-                <i class="fas fa-${iconMap[type] || 'info-circle'} me-2 mt-1"></i>
+                <i class="fa-solid fa-${iconMap[type] || 'info-circle'} me-2 mt-1"></i>
                 <div class="flex-grow-1">
                     <div class="fw-semibold">${message}</div>
                 </div>

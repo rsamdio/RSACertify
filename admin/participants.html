@@ -1119,7 +1119,7 @@
 		
 		alertDiv.innerHTML = `
 			<div class="d-flex align-items-start">
-				<i class="fas fa-${iconMap[type] || 'info-circle'} me-2 mt-1"></i>
+				<i class="fa-solid fa-${iconMap[type] || 'info-circle'} me-2 mt-1"></i>
 				<div class="flex-grow-1">
 					<div class="fw-semibold">${message}</div>
 				</div>
@@ -2077,7 +2077,7 @@
 			const summaryRow = `
 				<tr class="table-light">
 					<td colspan="${2 + extraFields.length}" class="text-center text-muted">
-						<small><i class="fas fa-info-circle me-1"></i>Showing ${extraFields.length} custom fields: ${extraFields.map(f => f.label).join(', ')}</small>
+						<small><i class="fa-solid fa-info-circle me-1"></i>Showing ${extraFields.length} custom fields: ${extraFields.map(f => f.label).join(', ')}</small>
 					</td>
 					<td colspan="2"></td>
 				</tr>`;
