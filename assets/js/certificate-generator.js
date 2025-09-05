@@ -28,9 +28,6 @@ class CertificateGenerator {
             // Convert canvas to PDF
             const pdf = await this.createPDF(canvas);
             
-            // Store certificate metadata in Firestore
-            await this.storeCertificateMetadata(eventSlug, participant.id, 'pdf_generated');
-            
             // Return PDF blob for download
             return pdf;
             
@@ -445,23 +442,6 @@ class CertificateGenerator {
         }
     }
     
-    // Store certificate metadata in Firestore
-    async storeCertificateMetadata(eventSlug, participantId, status) {
-        if (!this.db) return;
-        
-        try {
-            await this.db.collection('certificates').doc(`${eventSlug}_${participantId}`).set({
-                eventSlug: eventSlug,
-                participantId: participantId,
-                generatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                status: status,
-                version: 1,
-                format: 'pdf',
-                hasCertificate: true
-            });
-        } catch (error) {
-        }
-    }
     
     // Search for participant in Firestore using event document ID
     async searchParticipant(eventDocId, email) {

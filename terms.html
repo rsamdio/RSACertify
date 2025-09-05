@@ -182,7 +182,15 @@
                     <p>By accessing and using the RSA Certify Certificate Center ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.</p>
 
                     <h2>2. Description of Service</h2>
-                    <p>The RSA Certify Certificate Center is an interactive web-based platform designed to help Rotaract clubs and members generate, manage, and verify certificates for various activities and achievements. The Service is provided by Rotaract South Asia MDIO (RSAMDIO) and developed by ZeoSpec.</p>
+                    <p>The RSA Certify Certificate Center is a comprehensive web-based platform designed to help Rotaract clubs and members generate, manage, and retrieve digital certificates for various activities and achievements. The Service includes:</p>
+                    <ul>
+                        <li>Digital certificate generation with customizable templates</li>
+                        <li>Participant management and bulk data import/export</li>
+                        <li>Certificate search and download functionality using email addresses or redeem codes</li>
+                        <li>Administrative dashboard for event and participant management</li>
+                        <li>Secure authentication and access control for administrators</li>
+                    </ul>
+                    <p>The Service is provided by Rotaract South Asia MDIO (RSAMDIO) and developed by ZeoSpec.</p>
 
                     <h2>3. Use License</h2>
                     <p>Permission is granted to temporarily access the materials (information or software) on the RSA Certify Certificate Center for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:</p>
@@ -210,15 +218,19 @@
                     <h2>8. User Data and Privacy</h2>
                     <p>By using this Service, you acknowledge that:</p>
                     <ul>
-                        <li>Participant data you input is stored locally in your browser and optionally in the cloud if you choose to sign in</li>
-                        <li>You are responsible for the accuracy and legality of any data you input</li>
+                        <li>Participant data is stored securely in Firebase Firestore database with proper encryption</li>
+                        <li>You are responsible for the accuracy and legality of any data you input or manage</li>
                         <li>You should not input sensitive personal information beyond what is necessary for certificate generation</li>
+                        <li>Email addresses and redeem codes are used for certificate retrieval and are stored securely</li>
+                        <li>Certificate download status and analytics data may be tracked for service improvement</li>
                         <li>Your use of the Service is subject to our Privacy Policy</li>
                     </ul>
 
                     <h2>9. Account Registration and Security</h2>
-                    <p>If you choose to create an account to save your data:</p>
+                    <p>For administrators who access the management features:</p>
                     <ul>
+                        <li>Administrator accounts require Google OAuth authentication</li>
+                        <li>Only authorized email domains (rsamdio.org, rotaract.org, rotary.org) are permitted for admin access</li>
                         <li>You are responsible for maintaining the confidentiality of your account</li>
                         <li>You are responsible for all activities that occur under your account</li>
                         <li>You must notify us immediately of any unauthorized use of your account</li>
@@ -240,12 +252,15 @@
                     <p>The Service and its original content, features, and functionality are and will remain the exclusive property of RSAMDIO and its licensors. The Service is protected by copyright, trademark, and other laws. Certificates generated through the Service may contain RSAMDIO branding and should not be modified without permission.</p>
 
                     <h2>12. Certificate Generation and Usage</h2>
-                    <p>When using the certificate generation features:</p>
+                    <p>When using the certificate generation and retrieval features:</p>
                     <ul>
                         <li>You must ensure all participant information is accurate and truthful</li>
-                        <li>Certificates are generated based on the data you provide</li>
+                        <li>Certificates are generated based on the data stored in the system</li>
                         <li>You are responsible for verifying the authenticity of generated certificates</li>
+                        <li>Certificate search functionality requires valid email addresses or redeem codes</li>
+                        <li>Download tracking and status updates are automatically recorded</li>
                         <li>RSAMDIO reserves the right to invalidate certificates if fraudulent activity is detected</li>
+                        <li>Bulk data import/export must comply with data protection regulations</li>
                     </ul>
 
                     <h2>13. Termination</h2>

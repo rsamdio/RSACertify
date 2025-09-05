@@ -26,9 +26,13 @@ class CertificateManager {
         }
         
         // Security: Input validation and sanitization
-        if (!SecurityUtils.validateEmail(email)) {
-            SecurityUtils.logSecurityEvent('invalid_email_input', { email, collectionName });
-            throw new Error('Invalid email format');
+        // Accept both email addresses and redeem codes
+        const isValidEmail = SecurityUtils.validateEmail(email);
+        const isValidRedeemCode = SecurityUtils.validateRedeemCode(email);
+        
+        if (!isValidEmail && !isValidRedeemCode) {
+            SecurityUtils.logSecurityEvent('invalid_input_format', { email, collectionName });
+            throw new Error('Invalid email address or redeem code format');
         }
         
         // Security: Rate limiting
@@ -46,8 +50,26 @@ class CertificateManager {
         }
         
         try {
-            const querySnapshot = await this.db.collection(sanitizedCollection)
-                .where('email', '==', email.toLowerCase())
+            // Handle subcollection paths (e.g., "events/testEvent/participants")
+            let collectionRef;
+            if (sanitizedCollection.includes('/')) {
+                const pathParts = sanitizedCollection.split('/');
+                collectionRef = this.db.collection(pathParts[0]);
+                for (let i = 1; i < pathParts.length; i += 2) {
+                    if (i + 1 < pathParts.length) {
+                        collectionRef = collectionRef.doc(pathParts[i]).collection(pathParts[i + 1]);
+                    }
+                }
+            } else {
+                collectionRef = this.db.collection(sanitizedCollection);
+            }
+            
+            // Search for both email addresses and redeem codes in the 'email' field
+            // Since the database field is still 'email' but can contain either emails or codes
+            const searchValue = isValidEmail ? email.toLowerCase() : email;
+            
+            const querySnapshot = await collectionRef
+                .where('email', '==', searchValue)
                 .limit(1)
                 .get();
             
@@ -96,19 +118,16 @@ class CertificateManager {
     // Enhanced certificate generation
     async generateCertificate(eventSlug, participant, eventConfig) {
         try {
+            if (!this.certificateGenerator) {
+                throw new Error('Certificate generator not initialized');
+            }
 
-            const existingCertificate = await this.certificateGenerator.getExistingCertificate(eventSlug, participant.id);
-            
-            // Generate new certificate (always regenerate for fresh data)
+            // Generate new certificate
             const certificate = await this.certificateGenerator.generateCertificate(eventSlug, participant, eventConfig);
-            
-            // Show success message
-            this.showSuccess('Certificate generated successfully!');
             
             return certificate;
             
         } catch (error) {
-
             
             // Provide specific error messages
             if (error.message.includes('template')) {
@@ -128,20 +147,28 @@ class CertificateManager {
         }
         
         try {
-
+            // Handle subcollection paths (e.g., "events/testEvent/participants")
+            let docRef;
+            if (collectionName.includes('/')) {
+                const pathParts = collectionName.split('/');
+                docRef = this.db.collection(pathParts[0]);
+                for (let i = 1; i < pathParts.length; i += 2) {
+                    if (i + 1 < pathParts.length) {
+                        docRef = docRef.doc(pathParts[i]).collection(pathParts[i + 1]);
+                    }
+                }
+                docRef = docRef.doc(participantId);
+            } else {
+                docRef = this.db.collection(collectionName).doc(participantId);
+            }
             
-            await this.db.collection(collectionName).doc(participantId).update({
-                certificateDownloaded: true,
+            await docRef.update({
+                certificateStatus: 'downloaded',
                 downloadedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             
-
-            this.showSuccess('Certificate download recorded successfully!');
-            
         } catch (error) {
-
-            
             if (error.code === 'permission-denied') {
                 throw new Error('Access denied. Please contact the administrator.');
             } else {

@@ -205,10 +205,11 @@
                     <h3>2.1 Information You Provide</h3>
                     <p>When you use our Service, we may collect the following types of information:</p>
                     <ul>
-                        <li><strong>Participant Data:</strong> Names, join dates, leave dates, club base information, and achievement details for certificate generation purposes</li>
-                        <li><strong>Event Information:</strong> Event titles, descriptions, dates, and participant lists</li>
-                        <li><strong>Account Information:</strong> If you choose to sign in, we collect your Google account information (email, name, profile picture)</li>
-                        <li><strong>Usage Data:</strong> Information about how you use our Service, including features accessed and certificates generated</li>
+                        <li><strong>Participant Data:</strong> Names, email addresses or redeem codes, and achievement details for certificate generation and retrieval purposes</li>
+                        <li><strong>Event Information:</strong> Event titles, descriptions, dates, participant lists, and certificate templates</li>
+                        <li><strong>Admin Account Information:</strong> For administrators, we collect Google account information (email, name, profile picture) for authentication and access control</li>
+                        <li><strong>Certificate Data:</strong> Information displayed on certificates, download timestamps, and certificate status</li>
+                        <li><strong>Search Queries:</strong> Email addresses or redeem codes used to search for certificates</li>
                     </ul>
 
                     <h3>2.2 Automatically Collected Information</h3>
@@ -222,31 +223,36 @@
                     <h2>3. How We Use Your Information</h2>
                     <p>We use the collected information for the following purposes:</p>
                     <ul>
-                        <li>To provide and maintain our Service</li>
-                        <li>To generate and manage certificates</li>
-                        <li>To save your data locally and optionally in the cloud</li>
+                        <li>To provide and maintain our certificate generation and retrieval Service</li>
+                        <li>To generate personalized PDF certificates with participant data</li>
+                        <li>To enable certificate search and download functionality</li>
+                        <li>To track certificate download status and analytics</li>
+                        <li>To authenticate administrators and control access to management features</li>
                         <li>To improve our Service and user experience</li>
                         <li>To analyze usage patterns and optimize performance</li>
-                        <li>To provide customer support</li>
-                        <li>To comply with legal obligations</li>
-                        <li>To verify certificate authenticity when required</li>
+                        <li>To provide customer support and technical assistance</li>
+                        <li>To comply with legal obligations and security requirements</li>
+                        <li>To verify certificate authenticity and prevent fraud</li>
                     </ul>
 
                     <h2>4. Data Storage and Security</h2>
                     
-                    <h3>4.1 Local Storage</h3>
-                    <p>Your participant data and event information is primarily stored locally in your browser using localStorage. This data remains on your device and is not transmitted to our servers unless you choose to sign in.</p>
+                    <h3>4.1 Cloud Storage (Primary)</h3>
+                    <p>Participant data and event information is stored securely in Google Firebase Firestore database. This includes participant details, certificate status, and download tracking. Data is encrypted in transit and at rest.</p>
 
-                    <h3>4.2 Cloud Storage (Optional)</h3>
-                    <p>If you choose to sign in with your Google account, your data may be stored securely in Google Firebase. This allows you to access your data across different devices and collaborate with team members.</p>
+                    <h3>4.2 Admin Data Storage</h3>
+                    <p>Administrator account information and event management data is stored in Firebase with proper authentication and access controls. Only authorized administrators can access and modify this data.</p>
 
                     <h3>4.3 Security Measures</h3>
-                    <p>We implement appropriate security measures to protect your information:</p>
+                    <p>We implement comprehensive security measures to protect your information:</p>
                     <ul>
-                        <li>Encryption of data in transit and at rest</li>
-                        <li>Secure authentication through Google OAuth</li>
+                        <li>End-to-end encryption of data in transit and at rest</li>
+                        <li>Secure authentication through Google OAuth for administrators</li>
+                        <li>Input validation and sanitization to prevent XSS and injection attacks</li>
+                        <li>Rate limiting to prevent abuse of search functionality</li>
+                        <li>Content Security Policy (CSP) and secure HTTP headers</li>
+                        <li>Firestore security rules with proper access controls</li>
                         <li>Regular security assessments and updates</li>
-                        <li>Access controls and authentication requirements</li>
                         <li>Secure certificate generation and verification processes</li>
                     </ul>
 
@@ -310,10 +316,12 @@
                     <h2>8. Data Retention</h2>
                     <p>We retain your information for as long as necessary to provide our Service and fulfill the purposes outlined in this policy:</p>
                     <ul>
-                        <li><strong>Local Data:</strong> Stored in your browser until you clear it or use the reset function</li>
-                        <li><strong>Cloud Data:</strong> Retained until you delete your account or request deletion</li>
-                        <li><strong>Analytics Data:</strong> Retained for up to 2 years for service improvement</li>
-                        <li><strong>Certificate Data:</strong> Retained as long as you maintain your account for verification purposes</li>
+                        <li><strong>Participant Data:</strong> Retained in Firebase Firestore for certificate generation and verification purposes</li>
+                        <li><strong>Certificate Status:</strong> Download timestamps and status information retained for analytics and verification</li>
+                        <li><strong>Admin Data:</strong> Administrator account information retained until account deletion or termination</li>
+                        <li><strong>Event Data:</strong> Event information and participant lists retained for historical and verification purposes</li>
+                        <li><strong>Analytics Data:</strong> Usage analytics retained for up to 2 years for service improvement</li>
+                        <li><strong>Search Logs:</strong> Search queries may be temporarily logged for security and abuse prevention</li>
                     </ul>
 
                     <h2>9. Children's Privacy</h2>
@@ -366,6 +374,9 @@
                         <li><strong>Participant Consent:</strong> Ensure you have consent from participants before including their information in certificates</li>
                         <li><strong>Data Minimization:</strong> Only include necessary information on certificates</li>
                         <li><strong>Secure Sharing:</strong> Use secure methods when sharing certificates containing personal information</li>
+                        <li><strong>Email/Redeem Code Privacy:</strong> Email addresses and redeem codes are used for certificate retrieval and are stored securely</li>
+                        <li><strong>Download Tracking:</strong> Certificate download status is tracked for analytics and verification purposes</li>
+                        <li><strong>Admin Access:</strong> Only authorized administrators can view and manage participant data</li>
                     </ul>
 
                     <div class="last-updated">

@@ -108,27 +108,27 @@ layout: default
                     <div class="integrated-certificate-form">
                         <div class="form-header">
                             <h3 class="form-title">Get Your Certificate</h3>
-                            <p class="form-subtitle">Enter your email address to retrieve your certificate</p>
+                            <p class="form-subtitle">Enter your email address / redeem code to retrieve your certificate</p>
                         </div>
                         
                         <form id="certificateForm" class="enhanced-form">
                             <div class="form-group">
                                 <label for="participantEmail" class="form-label">
                                     <i class="fa-solid fa-envelope me-2"></i>
-                                    Email Address
+                                    Email Address / Redeem Code
                                 </label>
                                 <div class="email-input-container">
                                     <input 
-                                        type="email" 
+                                        type="text" 
                                         class="email-input-field" 
                                         id="participantEmail" 
-                                        placeholder="Enter your email address"
+                                        placeholder="Enter your email address / redeem code"
                                         required
                                     >
                                 </div>
                                 <div class="form-help">
                                     <i class="fa-solid fa-info-circle me-1"></i>
-                                    Enter the email address you used when registering for this activity.
+                                    Enter the email address / redeem code you used when registering for this activity.
                                 </div>
                             </div>
                             
@@ -194,8 +194,8 @@ layout: default
                                 <div class="error-suggestions">
                                     <h6>Suggestions:</h6>
                                     <ul>
-                                        <li>Check if the email address is correct</li>
-                                        <li>Verify if you meet the requireemtns for receving this certificate</li>
+                                        <li>Check if the email address / redeem code is correct</li>
+                                        <li>Verify if you meet the requirements for receiving this certificate</li>
                                         <li>Contact the event organizer for assistance</li>
                                     </ul>
                                 </div>
@@ -849,16 +849,23 @@ layout: default
 }
 </style>
 
+<!-- Event configuration from Jekyll frontmatter -->
+<script type="application/json" id="event-config">
+{
+    "template": "{{ page.template }}",
+    "participantFields": {{ page.participantFields | default: '[]' | jsonify }},
+    "firestoreDocumentId": "{{ page.firestore_document_id }}"
+}
+</script>
+
 <script>
-    // Event configuration from Jekyll frontmatter
-    const eventConfig = {
-        template: '{{ page.template }}',
-        participantFields: {{ page.participantFields | jsonify }},
-        firestoreCollection: '{{ page.firestore_collection }}'
-    };
+    // Load event configuration
+    const eventConfig = JSON.parse(document.getElementById('event-config').textContent);
+    
+    // Build the full collection path
+    const participantsCollection = `events/${eventConfig.firestoreDocumentId}/participants`;
 
     // Initialize certificate manager
-    let certificateManager = null;
 
     // Function to search for participant in Firestore
     async function searchParticipant(eventDocId, email) {
@@ -867,12 +874,10 @@ layout: default
         }
 
         try {
-            // Initialize certificate generator if not already done
             if (!window.certificateManager) {
-                window.certificateManager = new window.CertificateGenerator();
+                throw new Error('Certificate manager not initialized. Please refresh the page.');
             }
             
-            // Use the certificate manager's search function
             return await window.certificateManager.searchParticipant(eventDocId, email);
         } catch (error) {
             throw error;
@@ -900,7 +905,11 @@ layout: default
             pdf.save(fileName);
 
             // Update participant status in Firestore
-            await updateParticipantStatus(eventDocId, participant.id);
+            try {
+                await updateParticipantStatus(participant.id, participantsCollection);
+            } catch (statusError) {
+                // Status update failed - continue without error
+            }
 
             // Reset button
             btnContent.style.display = 'inline-block';
@@ -925,26 +934,24 @@ layout: default
     // Function to generate certificate
     async function generateCertificate(eventSlug, participant, eventConfig) {
         if (!window.certificateManager) {
-            window.certificateManager = new window.CertificateGenerator();
+            throw new Error('Certificate manager not initialized. Please refresh the page.');
         }
         
         return await window.certificateManager.generateCertificate(eventSlug, participant, eventConfig);
     }
 
     // Function to update participant status
-    async function updateParticipantStatus(eventDocId, participantId) {
+    async function updateParticipantStatus(participantId, collectionName) {
         if (!window.firebase) {
             throw new Error('Firebase not initialized');
         }
 
         try {
-            // Initialize certificate generator if not already done
             if (!window.certificateManager) {
-                window.certificateManager = new window.CertificateGenerator();
+                throw new Error('Certificate manager not initialized. Please refresh the page.');
             }
             
-            // Use the certificate manager's update function
-            await window.certificateManager.updateParticipantStatus(eventDocId, participantId);
+            await window.certificateManager.updateParticipantStatus(participantId, collectionName);
         } catch (error) {
             throw error;
         }
@@ -998,7 +1005,7 @@ layout: default
         
         try {
             // Search for participant
-            const participant = await searchParticipant(eventConfig.firestoreCollection, email);
+            const participant = await searchParticipant(participantsCollection, email);
             
             if (participant) {
                 // Show certificate found
@@ -1007,7 +1014,7 @@ layout: default
                 
                 // Set up download button
                 document.getElementById('downloadBtn').onclick = () => {
-                    downloadCertificate('{{ page.slug }}', participant, eventConfig.firestoreCollection);
+                    downloadCertificate('{{ page.slug }}', participant, participantsCollection);
                 };
                 
                 // Scroll to certificate found section after it's fully rendered
@@ -1019,7 +1026,7 @@ layout: default
                 }, 100);
             } else {
                 // Show error
-                document.getElementById('errorMessage').textContent = 'No certificate found for this email address. Please check your email or contact the event organizer.';
+                document.getElementById('errorMessage').textContent = 'No certificate found for this email address or redeem code. Please check your input or contact the event organizer.';
                 document.getElementById('errorState').style.display = 'block';
                 
                 // Scroll to error section after it's fully rendered
@@ -1031,7 +1038,7 @@ layout: default
                 }, 100);
             }
         } catch (error) {
-            document.getElementById('errorMessage').textContent = 'An error occurred while searching. Please try again.';
+            document.getElementById('errorMessage').textContent = 'An error occurred while searching. Please check your input format and try again.';
             document.getElementById('errorState').style.display = 'block';
             
             // Scroll to error section after it's fully rendered

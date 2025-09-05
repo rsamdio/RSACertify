@@ -1,30 +1,46 @@
-# Multi-Event Certificate Generator
+# RSA Certify - Digital Certificate Generation Platform
 
-A Jekyll-based static website with **Firebase** handling authentication and participant data storage. Certificates are generated dynamically based on event-specific templates and participant data.
+A comprehensive Jekyll-based static website with **Firebase** integration for digital certificate generation, management, and distribution. Built for **Rotaract South Asia MDIO (RSAMDIO)** to enable Rotaractors to celebrate and showcase their contributions and achievements.
 
-## 🚀 Features
+## 🚀 Key Features
 
-- **Event Management**: Create and manage events via admin panel
-- **Participant Management**: Upload and manage participant lists via CSV or manual entry
-- **Certificate Generation**: Auto-generate certificates with participant data
-- **Admin Authentication**: Gmail-based Firebase authentication for admins only
-- **Public Access**: Participants can retrieve certificates without logging in
-- **Responsive Design**: Modern, mobile-friendly interface
+### **For Participants**
+- **Certificate Retrieval**: Search and download certificates using email addresses or redeem codes
+- **Public Access**: No registration required for certificate retrieval
+- **Mobile-Friendly**: Responsive design optimized for all devices
+- **Secure Downloads**: PDF certificates with proper validation
+
+### **For Administrators**
+- **Event Management**: Create and manage multiple events with custom configurations
+- **Participant Management**: Bulk upload participants via CSV or manual entry
+- **Certificate Generation**: Dynamic PDF generation with customizable templates
+- **Admin Authentication**: Secure Google OAuth-based authentication
+- **Analytics Dashboard**: Track certificate downloads and participant engagement
+- **CSV Import/Export**: Full participant data management with proper quote handling
+
+### **Technical Features**
+- **Dynamic Templates**: Customizable certificate templates with field positioning
+- **Firebase Integration**: Real-time data synchronization and secure storage
+- **Security First**: Comprehensive input validation, rate limiting, and XSS protection
+- **SEO Optimized**: Built-in SEO features with structured data
+- **Performance Optimized**: Static site generation with CDN-ready assets
 
 ## 🛠️ Tech Stack
 
-- **Jekyll**: Static site generator
-
-- **Firebase**: Authentication and Firestore database (no storage needed)
-- **Bootstrap 5**: UI framework
-- **Font Awesome**: Icons
+- **Frontend**: Jekyll (Static Site Generator)
+- **Backend**: Firebase (Authentication, Firestore Database)
+- **UI Framework**: Bootstrap 5 + Custom CSS
+- **Icons**: Font Awesome 6
+- **PDF Generation**: jsPDF with Canvas API
+- **Security**: Custom SecurityUtils with input validation
+- **Deployment**: Netlify with HTTP security headers
 
 ## 📋 Prerequisites
 
 - Ruby 2.6.5 or higher
 - Bundler
-
-- Firebase project
+- Firebase project with Firestore enabled
+- Google OAuth configured for admin authentication
 
 ## 🔧 Setup Instructions
 
@@ -32,7 +48,7 @@ A Jekyll-based static website with **Firebase** handling authentication and part
 
 ```bash
 git clone <repository-url>
-cd certdevnew
+cd RSACertify
 ```
 
 ### 2. Install Dependencies
@@ -40,9 +56,6 @@ cd certdevnew
 ```bash
 # Install Ruby gems
 bundle install
-
-# Install Node.js dependencies (if needed)
-npm install
 ```
 
 ### 3. Firebase Setup
@@ -65,16 +78,27 @@ const firebaseConfig = {
 
 ### 4. Configure Admin Access
 
-Update the admin emails in `assets/js/auth.js`:
+Update the admin emails in `assets/js/security-utils.js`:
 
 ```javascript
-this.adminEmails = [
-    'your-admin-email@gmail.com',
-    // Add more admin emails here
-];
+static validateAdminEmail(email) {
+    const allowedDomains = [
+        'rsamdio.org',
+        'rotaract.org',
+        'rotary.org'
+    ];
+    // ... validation logic
+}
 ```
 
-### 5. Run the Development Server
+### 5. Firestore Security Rules
+
+Configure your Firestore security rules to allow:
+- Public read access for certificate retrieval
+- Admin write access for participant management
+- Proper authentication for admin functions
+
+### 6. Run the Development Server
 
 ```bash
 bundle exec jekyll serve
@@ -85,152 +109,187 @@ The site will be available at `http://localhost:4000`
 ## 📁 Project Structure
 
 ```
-certdevnew/
-├── _events/                 # Event markdown files
-├── _layouts/               # Jekyll layouts
-├── _includes/              # Jekyll includes
+RSACertify/
+├── _events/                 # Event markdown files (Jekyll collection)
+├── _layouts/               # Jekyll layouts (default, event)
+├── _includes/              # Jekyll includes (footer)
 ├── assets/
 │   ├── css/               # Stylesheets
-│   ├── js/                # JavaScript files
-│   ├── images/            # Images
-│   └── templates/         # Certificate templates
-├── admin/                 # Admin dashboard
+│   ├── js/                # JavaScript modules
+│   │   ├── main.js        # Certificate manager
+│   │   ├── firebase-config.js # Firebase setup
+│   │   ├── certificate-generator.js # PDF generation
+│   │   └── security-utils.js # Security utilities
+│   ├── images/            # Static images
+│   └── templates/         # Certificate templates (PNG)
+├── admin/                 # Admin dashboard (Decap CMS)
+│   ├── index.html         # CMS interface
+│   ├── config.yml         # CMS configuration
+│   └── participants.html  # Participant management
 ├── _config.yml           # Jekyll configuration
+├── netlify.toml          # Netlify deployment config
 ├── Gemfile               # Ruby dependencies
 └── README.md             # This file
 ```
 
-## 🎯 Usage
+## 🎯 Usage Guide
 
-### For Admins
+### For Administrators
 
-1. **Access Admin Panel**: Navigate to `/admin/` and login with Gmail
-2. **Manage Events**: Use the admin panel to create/edit events
-3. **Upload Participants**: Use the admin panel to upload CSV files or add participants manually
-4. **Monitor Analytics**: View download statistics and event performance
+#### 1. **Access Admin Panel**
+- Navigate to `/admin/` and login with authorized Google account
+- Use Decap CMS interface for content management
+
+#### 2. **Create Events**
+- Add new events via the admin interface
+- Configure event details, templates, and participant fields
+- Set Firestore document ID for data storage
+
+#### 3. **Manage Participants**
+- Upload participant lists via CSV (with proper quote handling)
+- Manual participant entry with validation
+- Export participant data for backup
+- Track certificate download status
+
+#### 4. **Monitor Analytics**
+- View download statistics
+- Track participant engagement
+- Monitor system performance
 
 ### For Participants
 
-1. **Browse Events**: Visit the main page to see available events
-2. **Find Certificate**: Click on an event and enter your email
-3. **Download Certificate**: If found, download your personalized certificate
+#### 1. **Find Your Certificate**
+- Visit the main page to browse available events
+- Click on an event to access certificate retrieval
+- Enter your email address or redeem code
 
-## 🔐 Security
+#### 2. **Download Certificate**
+- If found, your personalized certificate will be displayed
+- Click download to get a PDF version
+- Certificate status is automatically updated
 
-- **Admin Authentication**: Only authorized Gmail accounts can access admin features
-- **Public Access**: Participants can retrieve certificates without authentication
-- **Firestore Rules**: Configured to allow public read access for certificate retrieval
+## 🔐 Security Features
+
+### **Input Validation**
+- Email and redeem code validation
+- XSS prevention with HTML escaping
+- SQL injection prevention for Firestore queries
+- Rate limiting for search operations
+
+### **Authentication**
+- Google OAuth for admin access
+- Domain-based admin email validation
+- Secure session management
+
+### **Data Protection**
+- HTTPS enforcement
+- Content Security Policy (CSP)
+- X-Frame-Options protection
+- Secure HTTP headers via Netlify
 
 ## 📊 Data Model
 
-### Events (Admin Panel)
+### **Events Collection (Jekyll)**
 ```yaml
 title: "Event Title"
 slug: "event-slug"
 description: "Event description"
-status: "published" # draft | published | archived
 date: "2024-01-15"
+status: "active" # active | closed
 template: "/assets/templates/event-template.png"
-firestore_collection: "event_participants"
-fields:
+firestore_document_id: "event_doc_id"
+participantFields:
   - key: "name"
     label: "Full Name"
     required: true
-    x: 300
-    y: 200
-    font_size: 24
+    x: "20%"
+    y: 350
+    font_size: 50
+    color: "#000000"
 ```
 
-### Participants (Firestore)
+### **Participants Collection (Firestore)**
 ```json
 {
-  "email": "participant@example.com",
-  "name": "John Doe",
-  "certificateDownloaded": false,
-  "downloadedAt": null
-}
-```
-
-### Certificate Metadata (Firestore)
-```json
-{
-  "eventSlug": "web-dev-workshop",
-  "participantId": "participant_id",
-  "generatedAt": "timestamp",
-  "status": "generated",
-  "hasCertificate": true
+  "name": "Participant Name",
+  "email": "participant@example.com", // or redeem code
+  "certificateStatus": "pending", // pending | downloaded
+  "downloadedAt": "timestamp",
+  "updatedAt": "timestamp",
+  "additionalFields": {
+    "custom_field": "value"
+  }
 }
 ```
 
 ## 🚀 Deployment
 
-### Netlify (Recommended)
-
+### **Netlify Deployment**
 1. Connect your repository to Netlify
-2. Set build command: `bundle exec jekyll build`
-3. Set publish directory: `_site`
-4. Configure environment variables for Firebase
+2. Configure build settings:
+   - Build command: `bundle exec jekyll build`
+   - Publish directory: `_site`
+3. Set environment variables for Firebase
+4. Deploy with automatic HTTPS and security headers
 
-### GitHub Pages
-
-1. Push to GitHub
-2. Enable GitHub Pages in repository settings
-3. Set source to main branch
+### **Environment Variables**
+```bash
+FIREBASE_API_KEY=your_api_key
+FIREBASE_AUTH_DOMAIN=your_domain
+FIREBASE_PROJECT_ID=your_project_id
+```
 
 ## 🔧 Configuration
 
-### Jekyll Configuration
+### **Event Configuration**
+Each event is configured via Jekyll frontmatter with:
+- Event metadata (title, description, date)
+- Template configuration
+- Participant field definitions
+- Firestore integration settings
 
-Edit `_config.yml` to customize:
-- Site title and description
-- URL and base URL
-- Collections and pagination
+### **Certificate Templates**
+- PNG format templates stored in `/assets/templates/`
+- Dynamic field positioning via configuration
+- Customizable fonts, colors, and sizing
+- Responsive design considerations
 
+## 📈 Performance Optimizations
 
-### Firebase Configuration
+- **Static Site Generation**: Fast loading with Jekyll
+- **CDN Ready**: Optimized assets for global delivery
+- **Lazy Loading**: Images and scripts loaded on demand
+- **Caching**: Browser and CDN caching strategies
+- **Compression**: Gzip compression for all assets
 
-Update Firestore security rules to allow:
-- Public read access for certificate retrieval
-- Admin write access for participant management
+## 🛡️ Security Considerations
 
-### Certificate Templates
+- **Input Sanitization**: All user inputs are validated and sanitized
+- **Rate Limiting**: Prevents abuse of search functionality
+- **CSRF Protection**: Token-based request validation
+- **Secure Headers**: Comprehensive HTTP security headers
+- **Firebase Rules**: Proper Firestore security rules
 
-Templates are stored locally in `assets/templates/` and can be managed via:
-- Git repository (direct file upload)
+## 📞 Support
 
+### **Technical Support**
+- **Developer**: ZeoSpec
+- **Email**: contact@zeospec.com
+- **Website**: https://rtr.zeospec.com/
+
+### **Organization Contact**
+- **Organization**: Rotaract South Asia MDIO
+- **Contact**: PDRR Arun Teja Godavarthi
+- **Email**: rotaract3191drr@gmail.com
+
+## 📄 License
+
+This project is developed for Rotaract South Asia MDIO. All rights reserved.
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+This is a specialized project for RSAMDIO. For contributions or modifications, please contact the development team.
 
-## 📝 License
+---
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Support
-
-For support and questions:
-- Create an issue in the repository
-- Check the documentation
-- Review Firebase and Jekyll documentation
-
-## 🔄 Updates and Maintenance
-
-- Regularly update dependencies
-- Monitor Firebase usage and costs
-- Backup Firestore data regularly
-- Test certificate generation functionality
-
-## 📈 Future Enhancements
-
-- [ ] PDF certificate templates
-- [ ] Visual field placement editor
-- [ ] Certificate versioning
-- [ ] Automated participant syncing
-- [ ] Advanced analytics
-- [ ] Email notifications
-- [ ] Bulk certificate generation
-- [ ] Custom certificate designs
+**Built with ❤️ for Rotaract South Asia MDIO by ZeoSpec**

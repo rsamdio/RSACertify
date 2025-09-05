@@ -33,13 +33,14 @@ if (typeof firebase !== 'undefined') {
         
         db.settings({
             cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-        });
+        }, { merge: true });
         
         auth.onAuthStateChanged((user) => {
             if (user) {
                 db.enableNetwork();
             } else {
-                db.disableNetwork();
+                // Don't disable network for anonymous users - they still need to access Firestore
+                // db.disableNetwork();
             }
         });
     } catch (error) {

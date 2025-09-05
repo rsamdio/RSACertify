@@ -25,7 +25,7 @@ collections:
       - { label: "Date", name: "date", widget: "datetime", date_format: "YYYY-MM-DD" }
       - { label: "Status", name: "status", widget: "select", options: ["active", "closed"], default: "active" }
       - { label: "Certificate Template", name: "template", widget: "image" }
-      - { label: "Firestore Collection", name: "firestore_collection", widget: "string", hint: "Firestore collection/doc id" }
+      - { label: "Firestore Event ID", name: "firestore_document_id", widget: "string", hint: "Firestore collection/doc id" }
       - { label: "Keywords", name: "keywords", widget: "string", default: "RSA Certify, Certificate Center, Rotaract South Asia MDIO, Achievement Certificates, Digital Certificates, Rotaract Activities, Certificate Generation, RSAMDIO", hint: "Comma-separated keywords for SEO" }
       - { label: "Author", name: "author", widget: "string", default: "Rotaract South Asia MDIO", hint: "Event organizer or author" }
       - { label: "OG Type", name: "og_type", widget: "string", default: "event", hint: "Open Graph type (e.g., event)" }

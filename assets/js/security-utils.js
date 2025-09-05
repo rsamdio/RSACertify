@@ -18,6 +18,8 @@ class SecurityUtils {
         switch (type) {
             case 'email':
                 return this.validateEmail(sanitized) ? sanitized.toLowerCase() : '';
+            case 'redeemCode':
+                return this.validateRedeemCode(sanitized) ? sanitized : '';
             case 'name':
                 return this.validateName(sanitized) ? sanitized : '';
             case 'url':
@@ -33,6 +35,14 @@ class SecurityUtils {
     static validateEmail(email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email) && email.length <= 254;
+    }
+    
+    // Redeem code validation
+    static validateRedeemCode(code) {
+        // Allow alphanumeric codes with hyphens and underscores
+        // Length between 3-50 characters
+        const codeRegex = /^[a-zA-Z0-9\-_]{3,50}$/;
+        return codeRegex.test(code) && code.length >= 3 && code.length <= 50;
     }
     
     // Name validation
