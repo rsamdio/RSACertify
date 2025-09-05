@@ -1,11 +1,11 @@
 const firebaseConfig = {
-    apiKey: "AIzaSyAESgXpnL3FJI_87YDuxq_cexaw0xGEgjo",
-    authDomain: "rsacertificatecenter.firebaseapp.com",
-    projectId: "rsacertificatecenter",
-    storageBucket: "rsacertificatecenter.firebasestorage.app",
-    messagingSenderId: "636003063381",
-    appId: "1:636003063381:web:af3ced308e9fce17a4a6dc",
-    measurementId: "G-9WNGCFTSQJ"
+    apiKey: "AIzaSyAnwGIka86C74YsqCNwCwqTebYcynjaK2k",
+    authDomain: "rsacertify.firebaseapp.com",
+    projectId: "rsacertify",
+    storageBucket: "rsacertify.firebasestorage.app",
+    messagingSenderId: "623867096357",
+    appId: "1:623867096357:web:8af2600adc0145b14dfecc",
+    measurementId: "G-RTT3BLGHYN"
 };
 
 function validateFirebaseConfig(config) {
