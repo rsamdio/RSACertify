@@ -29,15 +29,15 @@
     <meta name="format-detection" content="telephone=no">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="{{ site.url }}{{ page.url }}">
+    <link rel="canonical" href="{{ page.url | replace:'index.html','' | absolute_url }}">
     
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="{% if page.title %}{{ page.title }}{% endif %}{% if page.url == "/" %}{{site.title}}{% else %} | {{site.title}}{% endif %}">
     <meta property="og:description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
     <meta property="og:type" content="{% if page.og_type %}{{ page.og_type }}{% else %}website{% endif %}">
-    <meta property="og:url" content="{{ site.url }}{{ page.url }}">
+    <meta property="og:url" content="{{ page.url | replace:'index.html','' | absolute_url }}">
     <meta property="og:site_name" content="{{ site.title }}">
-    <meta property="og:image" content="{% if page.og_image %}{{ page.og_image }}{% else %}{{ site.url }}/assets/images/calculatorogimg.webp{% endif %}">
+    <meta property="og:image" content="{% if page.og_image %}{{ page.og_image | absolute_url }}{% else %}{{ site.og_image | absolute_url }}{% endif %}">
     <meta property="og:image:type" content="image/webp">
     <meta property="og:image:width" content="600">
     <meta property="og:image:height" content="400">
@@ -49,7 +49,7 @@
     <meta name="twitter:description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
     <meta name="twitter:site" content="@{{ site.twitter_username }}">
     <meta name="twitter:creator" content="@{{ site.twitter_username }}">
-    <meta name="twitter:image" content="{% if page.og_image %}{{ page.og_image }}{% else %}{{ site.url }}/assets/images/calculatorogimg.webp{% endif %}">
+    <meta name="twitter:image" content="{% if page.og_image %}{{ page.og_image | absolute_url }}{% else %}{{ site.og_image | absolute_url }}{% endif %}">
     
     <!-- Additional SEO Meta Tags -->
     <meta name="keywords" content="{% if page.keywords %}{{ page.keywords }}{% else %}RSA Certify, Certificate Center, Rotaract South Asia MDIO, Achievement Certificates, Digital Certificates, Rotaract Activities, Certificate Generation, RSAMDIO{% endif %}">
@@ -66,10 +66,10 @@
     <meta http-equiv="Expires" content="0">
     
     <!-- Favicon and App Icons -->
-    <link rel="icon" type="image/webp" href="/assets/images/favicon.webp">
-    <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
-    <link rel="shortcut icon" href="/assets/images/favicon.ico">
-    <link rel="apple-touch-icon" href="/assets/images/favicon.webp">
+    <link rel="icon" type="image/webp" href="{{site.baseurl}}/assets/images/favicon.webp">
+    <link rel="icon" type="image/x-icon" href="{{site.baseurl}}/assets/images/favicon.ico">
+    <link rel="shortcut icon" href="{{site.baseurl}}/assets/images/favicon.ico">
+    <link rel="apple-touch-icon" href="{{site.baseurl}}/assets/images/favicon.webp">
     
     <!-- Performance Optimizations -->
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">

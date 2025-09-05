@@ -7,6 +7,8 @@ url: "https://certify.rsamdio.org"
 twitter_username: rsa_mdio
 github_username: rsamdioweb
 
+og_image: "/assets/images/calculatorogimg.webp"
+
 # Build settings
 markdown: kramdown
 highlighter: rouge
