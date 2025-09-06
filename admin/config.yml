@@ -4,6 +4,9 @@ backend:
 
 local_backend: true
 
+editor:
+    preview: false
+
 publish_mode: editorial_workflow
 
 media_folder: "assets/templates"
