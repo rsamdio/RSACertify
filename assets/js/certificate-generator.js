@@ -15,7 +15,6 @@ class CertificateGenerator {
     // Generate certificate with participant data
     async generateCertificate(eventSlug, participant, eventConfig) {
         try {
-            
             // Load certificate template
             const template = await this.loadTemplate(eventConfig.template);
             

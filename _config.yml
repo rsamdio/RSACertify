@@ -19,6 +19,20 @@ plugins:
   - jekyll-sitemap
   - jekyll-paginate
 
+# Production optimizations
+compress_html:
+  clippings: all
+  comments: all
+  endings: all
+  startings: [html, head, body]
+  blanklines: false
+  profile: false
+
+# Performance settings
+incremental: false
+lsi: false
+excerpt_separator: "\n\n"
+
 # Collections
 collections:
   events:

@@ -37,10 +37,16 @@ function initializeFirebaseApp() {
             const auth = firebase.auth();
             const db = firebase.firestore();
             
-            // Configure Firestore settings
-            db.settings({
-                cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-            });
+    // Configure Firestore settings
+    db.settings({
+        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+    });
+    
+    // Initialize Analytics
+    const analytics = firebase.analytics();
+    
+    // Set analytics user properties
+    analytics.setAnalyticsCollectionEnabled(true);
             
             // Set up auth state listener
             auth.onAuthStateChanged((user) => {
@@ -52,13 +58,10 @@ function initializeFirebaseApp() {
                 }
             });
             
-            console.log('Firebase initialized successfully');
         } catch (error) {
-            console.error('Firebase initialization error:', error);
             throw error;
         }
     } else {
-        console.warn('Firebase not loaded yet, retrying...');
         setTimeout(initializeFirebaseApp, 100);
     }
 }

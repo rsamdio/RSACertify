@@ -886,6 +886,8 @@ layout: default
 
     // Function to download certificate
     async function downloadCertificate(eventSlug, participant, eventDocId) {
+        const downloadStartTime = Date.now();
+        
         try {
             const downloadBtn = document.getElementById('downloadBtn');
             const btnContent = downloadBtn.querySelector('.btn-content');
@@ -896,7 +898,6 @@ layout: default
             btnLoading.style.display = 'inline-block';
             downloadBtn.disabled = true;
 
-
             // Generate certificate
             const pdf = await generateCertificate(eventSlug, participant, eventConfig);
             
@@ -904,11 +905,31 @@ layout: default
             const fileName = `certificate-${eventSlug}-${participant.name.replace(/\s+/g, '-')}.pdf`;
             pdf.save(fileName);
 
+            const downloadTime = Date.now() - downloadStartTime;
+
+            // Log successful certificate download
+            if (window.analyticsUtils) {
+                window.analyticsUtils.logCertificateDownload(
+                    eventSlug, 
+                    participant.name, 
+                    participant.id, 
+                    downloadTime
+                );
+            }
+
             // Update participant status in Firestore
             try {
                 await updateParticipantStatus(participant.id, participantsCollection);
             } catch (statusError) {
                 // Status update failed - continue without error
+                if (window.analyticsUtils) {
+                    window.analyticsUtils.logError(
+                        'participant_status_update_failed',
+                        statusError.message,
+                        'downloadCertificate',
+                        { eventSlug, participantId: participant.id }
+                    );
+                }
             }
 
             // Reset button
@@ -919,6 +940,18 @@ layout: default
             // Show success message
             showAlert('PDF Certificate downloaded successfully!', 'success');
         } catch (error) {
+            const downloadTime = Date.now() - downloadStartTime;
+            
+            // Log download error
+            if (window.analyticsUtils) {
+                window.analyticsUtils.logError(
+                    'certificate_download_error',
+                    error.message,
+                    'downloadCertificate',
+                    { eventSlug, participantId: participant.id, downloadTime }
+                );
+            }
+            
             showAlert('Error downloading certificate. Please try again.', 'danger');
             
             const downloadBtn = document.getElementById('downloadBtn');
@@ -989,6 +1022,20 @@ layout: default
         
         const email = document.getElementById('participantEmail').value.trim().toLowerCase();
         if (!email) return;
+        
+        // Log form submission
+        if (window.analyticsUtils) {
+            window.analyticsUtils.logFormSubmission(
+                'certificate_search_form',
+                'event_page',
+                true
+            );
+            window.analyticsUtils.logButtonClick(
+                'search_certificate',
+                'event_page',
+                { event_slug: '{{ page.slug }}' }
+            );
+        }
         
         const searchBtn = document.getElementById('searchBtn');
         const btnContent = searchBtn.querySelector('.btn-content');

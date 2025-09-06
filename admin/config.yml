@@ -32,7 +32,7 @@ collections:
       - { label: "Keywords", name: "keywords", widget: "string", default: "RSA Certify, Certificate Center, Rotaract South Asia MDIO, Achievement Certificates, Digital Certificates, Rotaract Activities, Certificate Generation, RSAMDIO", hint: "Comma-separated keywords for SEO" }
       - { label: "Author", name: "author", widget: "string", default: "Rotaract South Asia MDIO", hint: "Event organizer or author" }
       - { label: "OG Type", name: "og_type", widget: "string", default: "event", hint: "Open Graph type (e.g., event)" }
-      - { label: "OG Image", name: "og_image", widget: "image", default: "/assets/images/calculatorogimg.webp", hint: "Open Graph image for social sharing" }
+      - { label: "OG Image", name: "og_image", widget: "image", default: "/assets/images/certifyogimg.webp", hint: "Open Graph image for social sharing" }
       - { label: "Schema Type", name: "schema_type", widget: "string", default: "Event", hint: "Schema.org type for structured data" }
       - { label: "Robots", name: "robots", widget: "string", default: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1", hint: "SEO robots meta tag content" }
       - label: "Certificate Fields"

@@ -32,6 +32,18 @@ class CertificateManager {
         
         if (!isValidEmail && !isValidRedeemCode) {
             SecurityUtils.logSecurityEvent('invalid_input_format', { email, collectionName });
+            
+            // Log analytics for invalid search
+            if (window.analyticsUtils) {
+                window.analyticsUtils.logCertificateSearch(
+                    collectionName, 
+                    'invalid', 
+                    email, 
+                    false, 
+                    'Invalid email address or redeem code format'
+                );
+            }
+            
             throw new Error('Invalid email address or redeem code format');
         }
         
@@ -39,6 +51,18 @@ class CertificateManager {
         const rateLimitKey = `search_${email}`;
         if (!SecurityUtils.checkRateLimit(rateLimitKey, 10, 60000)) {
             SecurityUtils.logSecurityEvent('rate_limit_exceeded', { email, collectionName });
+            
+            // Log analytics for rate limit exceeded
+            if (window.analyticsUtils) {
+                window.analyticsUtils.logCertificateSearch(
+                    collectionName, 
+                    isValidEmail ? 'email' : 'redeem_code', 
+                    email, 
+                    false, 
+                    'Rate limit exceeded'
+                );
+            }
+            
             throw new Error('Too many search attempts. Please wait before trying again.');
         }
         
@@ -78,13 +102,57 @@ class CertificateManager {
                 const participantData = { id: doc.id, ...doc.data() };
                 
                 const sanitizedData = this.sanitizeParticipantData(participantData);
+                
+                // Log successful certificate search
+                if (window.analyticsUtils) {
+                    window.analyticsUtils.logCertificateSearch(
+                        sanitizedCollection, 
+                        isValidEmail ? 'email' : 'redeem_code', 
+                        email, 
+                        true
+                    );
+                    window.analyticsUtils.logCertificateFound(
+                        sanitizedCollection, 
+                        sanitizedData.name, 
+                        isValidEmail ? 'email' : 'redeem_code'
+                    );
+                }
+                
                 return sanitizedData;
+            }
+            
+            // Log unsuccessful certificate search
+            if (window.analyticsUtils) {
+                window.analyticsUtils.logCertificateSearch(
+                    sanitizedCollection, 
+                    isValidEmail ? 'email' : 'redeem_code', 
+                    email, 
+                    false, 
+                    'Certificate not found'
+                );
             }
             
             return null;
             
         } catch (error) {
             SecurityUtils.logSecurityEvent('search_error', { error: error.message, email, collectionName });
+            
+            // Log analytics for search error
+            if (window.analyticsUtils) {
+                window.analyticsUtils.logCertificateSearch(
+                    sanitizedCollection, 
+                    isValidEmail ? 'email' : 'redeem_code', 
+                    email, 
+                    false, 
+                    error.message
+                );
+                window.analyticsUtils.logError(
+                    'certificate_search_error',
+                    error.message,
+                    'searchParticipant',
+                    { collectionName, email, errorCode: error.code }
+                );
+            }
             
             // Provide more specific error messages
             if (error.code === 'permission-denied') {
@@ -117,6 +185,8 @@ class CertificateManager {
     
     // Enhanced certificate generation
     async generateCertificate(eventSlug, participant, eventConfig) {
+        const startTime = Date.now();
+        
         try {
             if (!this.certificateGenerator) {
                 throw new Error('Certificate generator not initialized');
@@ -125,9 +195,32 @@ class CertificateManager {
             // Generate new certificate
             const certificate = await this.certificateGenerator.generateCertificate(eventSlug, participant, eventConfig);
             
+            const generationTime = Date.now() - startTime;
+            
+            // Log successful certificate generation
+            if (window.analyticsUtils) {
+                window.analyticsUtils.logCertificateGenerationTime(eventSlug, generationTime);
+            }
+            
             return certificate;
             
         } catch (error) {
+            const generationTime = Date.now() - startTime;
+            
+            // Log certificate generation error
+            if (window.analyticsUtils) {
+                window.analyticsUtils.logCertificateGenerationError(
+                    eventSlug, 
+                    'generation_failed', 
+                    error.message
+                );
+                window.analyticsUtils.logError(
+                    'certificate_generation_error',
+                    error.message,
+                    'generateCertificate',
+                    { eventSlug, participantId: participant.id, generationTime }
+                );
+            }
             
             // Provide specific error messages
             if (error.message.includes('template')) {
@@ -168,7 +261,28 @@ class CertificateManager {
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             
+            // Log successful status update
+            if (window.analyticsUtils) {
+                window.analyticsUtils.logEvent('participant_status_updated', {
+                    participant_id: participantId,
+                    collection_name: collectionName,
+                    new_status: 'downloaded',
+                    event_category: 'participant',
+                    event_action: 'status_update'
+                });
+            }
+            
         } catch (error) {
+            // Log status update error
+            if (window.analyticsUtils) {
+                window.analyticsUtils.logError(
+                    'participant_status_update_error',
+                    error.message,
+                    'updateParticipantStatus',
+                    { participantId, collectionName, errorCode: error.code }
+                );
+            }
+            
             if (error.code === 'permission-denied') {
                 throw new Error('Access denied. Please contact the administrator.');
             } else {
@@ -184,8 +298,6 @@ class CertificateManager {
         }
         
         try {
-
-            
             const doc = await this.db.collection('events').doc(eventSlug).get();
             if (doc.exists) {
                 const config = doc.data();
@@ -193,11 +305,8 @@ class CertificateManager {
             }
             
             return null;
-            return null;
             
         } catch (error) {
-
-            
             if (error.code === 'permission-denied') {
                 throw new Error('Access denied. Please contact the administrator.');
             } else {
@@ -213,8 +322,6 @@ class CertificateManager {
         }
         
         try {
-
-            
             const batch = this.db.batch();
             const collectionRef = this.db.collection(eventSlug + '_participants');
             
@@ -231,14 +338,11 @@ class CertificateManager {
             });
             
             await batch.commit();
-
             
             this.showSuccess(`Successfully uploaded ${participants.length} participants!`);
             return participants.length;
             
         } catch (error) {
-
-            
             if (error.code === 'permission-denied') {
                 throw new Error('Access denied. Please contact the administrator.');
             } else if (error.code === 'resource-exhausted') {
@@ -256,8 +360,6 @@ class CertificateManager {
         }
         
         try {
-
-            
             const collectionRef = this.db.collection(eventSlug + '_participants');
             const snapshot = await collectionRef.get();
             
@@ -281,12 +383,9 @@ class CertificateManager {
                 downloadRate: totalParticipants > 0 ? (downloadedCount / totalParticipants * 100).toFixed(1) : 0
             };
             
-
             return stats;
             
         } catch (error) {
-
-            
             if (error.code === 'permission-denied') {
                 throw new Error('Access denied. Please contact the administrator.');
             } else {
@@ -302,8 +401,6 @@ class CertificateManager {
         }
         
         try {
-
-            
             const snapshot = await this.db.collection('certificates')
                 .orderBy('generatedAt', 'desc')
                 .limit(limit)
@@ -329,12 +426,9 @@ class CertificateManager {
                 }
             }
             
-
             return downloads;
             
         } catch (error) {
-
-            
             if (error.code === 'permission-denied') {
                 throw new Error('Access denied. Please contact the administrator.');
             } else {
