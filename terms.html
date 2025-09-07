@@ -1,182 +1,117 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+---
+layout: default
+title: "Terms and Conditions"
+description: "Terms and Conditions for RSA Certify - Learn about the terms of use, limitations, and user responsibilities for our certificate generation service."
+author: "ZeoSpec"
+og_type: "website"
+keywords: "terms and conditions, user agreement, RSA Certify, certificate generation, terms of service, user responsibilities"
+---
+
+<!-- Legal Page Styles -->
+<style>
+    .legal-content {
+        max-width: 800px;
+        margin: 0 auto;
+        line-height: 1.7;
+    }
     
-    <!-- Security Headers -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://www.googletagmanager.com https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://www.google-analytics.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://accounts.google.com; frame-src 'self' https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';">
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="X-Frame-Options" content="DENY">
-    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-    <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
+    .legal-content h1 {
+        color: #1a202c;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
     
-    <title>Terms and Conditions | RSA Certify - An initative Rotaract South Asia MDIO</title>
-
-    <meta name="description" content="Terms and Conditions for RSA Certify - Learn about the terms of use, limitations, and user responsibilities for our certificate generation service.">
-    <meta name="author" content="ZeoSpec">
-
-    <link rel="canonical" href="https://certify.rsamdio.org/terms.html"> 
-
-    <meta property="og:title" content="Terms and Conditions | RSA Certify - An initative Rotaract South Asia MDIO">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://certify.rsamdio.org/terms.html">
-    <meta property="og:site_name" content="RSA Certify - An initative Rotaract South Asia MDIO" />
-    <meta property="og:image" content="https://certify.rsamdio.org/assets/images/calculatorogimg.webp" />
-    <meta property="og:image:type" content="image/webp" />
-    <meta property="og:image:width" content="600" />
-    <meta property="og:image:height" content="400" />
-    <meta property="og:description" content="Terms and Conditions for RSA Certify - Learn about the terms of use, limitations, and user responsibilities for our certificate generation service.">
+    .legal-content h2 {
+        color: #2d3748;
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 0.5rem;
+    }
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/webp" href="{{site.baseurl}}/assets/images/favicon.webp">
-    <link rel="icon" type="image/x-icon" href="{{site.baseurl}}/assets/images/favicon.ico">
-    <link rel="shortcut icon" href="{{site.baseurl}}/assets/images/favicon.ico">
-
-    <!-- Preload critical resources -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
+    .legal-content h3 {
+        color: #4a5568;
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+    }
     
-    <!-- External CSS for better performance -->
-    <link rel="stylesheet" href="{{site.baseurl}}/assets/css/style.css">
+    .legal-content p {
+        margin-bottom: 1rem;
+        color: #4a5568;
+    }
     
-    <!-- Optimized Tailwind CSS with local fallback -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    .legal-content ul, .legal-content ol {
+        margin-bottom: 1rem;
+        padding-left: 1.5rem;
+    }
+    
+    .legal-content li {
+        margin-bottom: 0.5rem;
+        color: #4a5568;
+    }
+    
+    .legal-content .highlight {
+        background-color: #fef3c7;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-weight: 500;
+    }
+    
+    .legal-content .contact-info {
+        background-color: #f7fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }
+    
+    .legal-content .last-updated {
+        text-align: center;
+        font-style: italic;
+        color: #718096;
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e2e8f0;
+    }
+</style>
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SVX1SF3FE5"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
+<!-- Header -->
+<header class="text-center mb-5">
+    <div class="card p-4 mb-4">
+        <div class="d-flex justify-content-center mb-3">
+            <img src="{{site.baseurl}}/assets/images/rsamdio.webp" alt="RSAMDIO Logo" class="img-fluid" style="height: 60px;">
+        </div>
+        <h1 class="display-4 fw-bold text-primary mb-3">Terms and Conditions</h1>
+        <p class="lead text-muted">Please read these terms and conditions carefully before using the RSA Certify Certificate Center.</p>
+    </div>
+</header>
 
-    gtag('config', 'G-SVX1SF3FE5');
-    </script>
+<!-- Navigation -->
+<nav class="mb-4">
+    <div class="d-flex justify-content-center gap-2">
+        <a href="{{site.baseurl}}/" class="btn btn-outline-secondary">
+            <i class="fas fa-home me-2"></i>
+            Back to Certificate Center
+        </a>
+        <a href="{{site.baseurl}}/privacy/" class="btn btn-primary">
+            <i class="fas fa-shield-alt me-2"></i>
+            Privacy Policy
+        </a>
+    </div>
+</nav>
 
-    <!-- Critical CSS only - rest moved to external file -->
-    <style>
-        /* Critical above-the-fold styles only */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7fafc;
-            color: #4a5568;
-            margin: 0;
-            padding: 0;
-        }
-        
-        .legal-content {
-            max-width: 800px;
-            margin: 0 auto;
-            line-height: 1.7;
-        }
-        
-        .legal-content h1 {
-            color: #1a202c;
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-        
-        .legal-content h2 {
-            color: #2d3748;
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 0.5rem;
-        }
-        
-        .legal-content h3 {
-            color: #4a5568;
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
-        }
-        
-        .legal-content p {
-            margin-bottom: 1rem;
-            color: #4a5568;
-        }
-        
-        .legal-content ul, .legal-content ol {
-            margin-bottom: 1rem;
-            padding-left: 1.5rem;
-        }
-        
-        .legal-content li {
-            margin-bottom: 0.5rem;
-            color: #4a5568;
-        }
-        
-        .legal-content .highlight {
-            background-color: #fef3c7;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-            font-weight: 500;
-        }
-        
-        .legal-content .contact-info {
-            background-color: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            margin: 1.5rem 0;
-        }
-        
-        .legal-content .last-updated {
-            text-align: center;
-            font-style: italic;
-            color: #718096;
-            margin-top: 2rem;
-            padding-top: 1rem;
-            border-top: 1px solid #e2e8f0;
-        }
-    </style>
-</head>
-<body class="antialiased">
-    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
-        <!-- Header -->
-        <header class="text-center mb-12">
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 mb-8 border border-blue-100">
-                <picture>
-                    <source srcset="{{site.baseurl}}/assets/images/rsamdio.webp" type="image/webp">
-                    <img src="{{site.baseurl}}/assets/images/rsamdio.webp" alt="RSAMDIO Logo" class="mx-auto h-24 mb-6 drop-shadow-lg" 
-                         decoding="async" fetchpriority="high">
-                </picture>
-                <h1 class="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4">Terms and Conditions</h1>
-                <p class="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">Please read these terms and conditions carefully before using the RSA Certify Certificate Center.</p>
-            </div>
-        </header>
-
-        <!-- Navigation -->
-        <nav class="mb-8">
-            <div class="flex justify-center space-x-4">
-                <a href="{{site.baseurl}}/" class="btn btn-secondary">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                    Back to Certificate Center
-                </a>
-                <a href="{{site.baseurl}}/privacy.html" class="btn btn-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                    Privacy Policy
-                </a>
-            </div>
-        </nav>
-
-        <!-- Main Content -->
-        <main class="legal-content">
-            <div class="card p-8 shadow-lg border-0">
-                <div class="legal-content">
+<!-- Main Content -->
+<div class="card p-4">
+    <div class="legal-content">
                     <h1>Terms and Conditions</h1>
                     
-                    <p class="last-updated">Last updated: January 7, 2025</p>
+                    <p class="last-updated">Last updated: September 7, 2025</p>
 
                     <h2>1. Acceptance of Terms</h2>
                     <p>By accessing and using the RSA Certify Certificate Center ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.</p>
@@ -292,56 +227,5 @@
                     <div class="last-updated">
                         <p>By using the RSA Certify Certificate Center, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.</p>
                     </div>
-                </div>
-            </div>
-        </main>
-
-        <footer class="mt-12 py-6 bg-gradient-to-br from-gray-25 to-gray-50 border-t border-gray-100">
-            <div class="max-w-5xl mx-auto px-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
-                    <!-- Copyright & Organization -->
-                    <div class="text-center md:text-left">
-                        <h4 class="text-sm font-medium text-gray-500 mb-2">Rotaract South Asia MDIO</h4>
-                        <p class="text-xs text-gray-400">© <span id="current-year"></span> All rights reserved.</p>
-                    </div>
-
-                    <!-- Contact Information -->
-                    <div class="text-center">
-                        <h4 class="text-sm font-medium text-gray-500 mb-2">Contact</h4>
-                        <p class="text-xs text-grey-400 mb-1">PDRR Arun Teja Godavarthi<br>rotaract3191drr@gmail.com</p>
-                    </div>
-
-                    <!-- Disclaimer -->
-                    <div class="text-center md:text-right">
-                        <h4 class="text-sm font-medium text-gray-500 mb-2">Disclaimer</h4>
-                        <p class="text-xs text-gray-400">All certificates are generated based on verified participant data.</p>
-                    </div>
-                </div>
-
-                <!-- Bottom Bar -->
-                <div class="border-t border-gray-200 pt-4">
-                    <div class="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
-                        <p class="text-xs text-gray-400 text-center sm:text-left">This tool is designed to enable Rotaractors to celebrate and showcase their contributions and achievements.</p>
-                        <div class="flex items-center space-x-4">
-                            <div class="flex items-center space-x-2">
-                                <span class="text-xs text-gray-400">Powered by</span>
-                                <a href="https://rtr.zeospec.com/" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-gray-500 hover:text-gray-600 transition-colors">ZeoSpec</a>
-                            </div>
-                            <div class="flex items-center space-x-3">
-                                <a href="terms.html" class="text-xs text-gray-400 hover:text-gray-600 transition-colors">Terms</a>
-                                <span class="text-xs text-gray-400">•</span>
-                                <a href="privacy.html" class="text-xs text-gray-400 hover:text-gray-600 transition-colors">Privacy</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </footer>
     </div>
-
-    <script>
-        // Set current year in footer
-        document.getElementById('current-year').textContent = new Date().getFullYear();
-    </script>
-</body>
-</html>
+</div>
