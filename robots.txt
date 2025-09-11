@@ -5,8 +5,10 @@ Allow: /
 Allow: /index.html
 Allow: /terms/
 Allow: /privacy/
-Allow: /admin/
 Allow: /assets/
+
+# Disallow admin and sensitive areas
+Disallow: /admin/
 
 # Disallow temporary development files
 Disallow: /_site/
