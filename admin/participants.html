@@ -2041,14 +2041,11 @@ sitemap: false
 					</div>
 				</td>`;
 			
-			// Add custom field columns
+			// Add custom field columns as plain text
 			extraFields.forEach(field => {
 				const value = (additionalFields || {})[field.key] || '';
-				const badgeClass = value ? 'custom-field-badge' : 'custom-field-badge empty';
 				rowHTML += `
-					<td class="text-center">
-						<span class="${badgeClass}" title="${field.label}: ${value || 'Not set'}">${value || 'Not set'}</span>
-					</td>`;
+					<td>${value}</td>`;
 			});
 			
 			rowHTML += `
