@@ -1,0 +1,866 @@
+---
+sitemap: false
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+    <title>Admin Dashboard - RSA MDIO</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/webp" href="{{site.baseurl}}/assets/images/rsamdio.webp">
+    
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --info-color: #06b6d4;
+            --secondary-color: #6b7280;
+            --light-bg: #f8fafc;
+            --border-color: #e2e8f0;
+            --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --card-shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow-hover);
+        }
+
+        .nav-pills .nav-link {
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .nav-pills .nav-link:hover {
+            background-color: rgba(79, 70, 229, 0.1);
+            border-color: rgba(79, 70, 229, 0.2);
+        }
+
+        .nav-pills .nav-link.active {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            box-shadow: var(--card-shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem;
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table th {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: none;
+            font-weight: 600;
+            color: #374151;
+            padding: 1rem;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .table td {
+            padding: 1rem;
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(79, 70, 229, 0.02);
+        }
+
+        .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+            border-color: var(--primary-color);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
+            border-color: var(--success-color);
+        }
+
+        .btn-outline-primary {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .badge {
+            border-radius: 6px;
+            font-weight: 500;
+            padding: 0.375rem 0.75rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .status-badge.success {
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+
+        .status-badge.pending {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+
+        .modal-content {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+            padding: 0.75rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--secondary-color);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .alert {
+            border-radius: 12px;
+            border: none;
+            box-shadow: var(--card-shadow);
+        }
+
+        .breadcrumb-nav {
+            background: transparent;
+            padding: 0;
+            margin-bottom: 1rem;
+        }
+
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: "›";
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+
+        .search-box {
+            position: relative;
+            max-width: 300px;
+        }
+
+        .search-box .form-control {
+            padding-left: 2.5rem;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--secondary-color);
+        }
+
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .sortable-header:hover {
+            background-color: rgba(79, 70, 229, 0.05);
+        }
+
+        .custom-field-badge {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 1px solid #cbd5e1;
+            color: #475569;
+            font-size: 0.875rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .custom-field-badge.empty {
+            background: #f1f5f9;
+            color: #94a3b8;
+            border-color: #e2e8f0;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-header {
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .nav-pills .nav-link {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+            
+            .card-header {
+                padding: 1rem;
+            }
+            
+            .table th, .table td {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.875rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .action-buttons .btn {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+        }
+
+        /* Ensure gate screen is completely hidden when app is shown */
+        #gateScreen[style*="display: none"] {
+            display: none !important;
+        }
+        
+        #gateScreen[style*="display: none"] * {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Gate Screen (Sign In) -->
+    <div id="gateScreen" class="container py-5">
+        <div class="d-flex justify-content-center align-items-center" style="min-height:50vh;">
+            <div class="card shadow-sm w-100" style="max-width:520px;">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <img src="{{site.baseurl}}/assets/images/rsamdio.webp" alt="RSA MDIO Logo" style="width: 64px; height: 64px; object-fit: contain;">
+                    </div>
+                    <h1 class="h4 mb-2">Admin Area</h1>
+                    <p class="text-muted" id="gateMessage">Sign in to continue.</p>
+                    <button class="btn btn-primary" onclick="signIn()">Sign in with Google</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="appContainer" class="container py-4" style="display: none;">
+        <!-- Enhanced Dashboard Header -->
+        <div class="dashboard-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-white bg-opacity-20 p-3">
+                        <img src="{{site.baseurl}}/assets/images/rsamdio.webp" alt="RSA MDIO Logo" style="width: 48px; height: 48px; object-fit: contain;">
+                    </div>
+                    <div>
+                        <h1 class="h3 mb-1 text-white fw-bold">Admin Dashboard</h1>
+                        <p class="mb-0 text-white-50">Manage Events and Participants</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-light" onclick="signIn()" id="signinBtn">
+                        <i class="fa-brands fa-google me-1"></i>Sign in
+                    </button>
+                    <button class="btn btn-sm btn-outline-light d-none" onclick="signOut()" id="signoutBtn">
+                        <i class="fa-solid fa-sign-out-alt me-1"></i>Sign out
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Navigation -->
+        <div class="d-flex justify-content-center mb-4">
+            <ul class="nav nav-pills">
+                <li class="nav-item">
+                    <button class="nav-link active" id="tab-events" onclick="switchTab('events')">
+                        <i class="fa-solid fa-calendar-days me-2"></i>Events
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="tab-participants" onclick="switchTab('participants')">
+                        <i class="fa-solid fa-users me-2"></i>Participants
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="tab-admins" onclick="switchTab('admins')">
+                        <i class="fa-solid fa-user-shield me-2"></i>Admins
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Events Section -->
+        <div id="eventsSection">
+            <!-- Events Table -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-3">
+                        <h2 class="h5 mb-0 fw-bold">
+                            <i class="fa-solid fa-calendar-days me-2 text-primary"></i>Events
+                        </h2>
+                        <span class="badge bg-primary fs-6" id="totalEvents">0</span>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-outline-secondary" onclick="loadEvents()" title="Refresh">
+                            <i class="fa-solid fa-rotate"></i>
+                        </button>
+                        <button class="btn btn-primary" onclick="openEventModal()">
+                            <i class="fa-solid fa-plus me-1"></i>New Event
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0" id="eventsTable">
+                        <thead>
+                            <tr>
+                                <th>Event Details</th>
+                                <th>Participants</th>
+                                <th>Certificates</th>
+                                <th>Last Updated</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Participants Section -->
+        <div id="participantsSection" class="d-none">
+            <!-- Breadcrumb Navigation -->
+            <nav class="breadcrumb-nav mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="#" onclick="switchTab('events')" class="text-decoration-none">
+                            <i class="fa-solid fa-calendar-days me-1"></i>Events
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active">
+                        <i class="fa-solid fa-users me-1"></i>Participants
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Event Info Header -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="h4 mb-2 fw-bold">
+                                <i class="fa-solid fa-users me-2 text-primary"></i>Participants
+                            </h2>
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="text-muted">
+                                    <i class="fa-solid fa-calendar me-1"></i>
+                                    Event: <strong id="participantsEventName">-</strong>
+                                </span>
+                                <span class="badge bg-info" id="participantsCount">0</span>
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-outline-secondary" onclick="switchTab('events')" title="Back to Events">
+                                <i class="fa-solid fa-arrow-left me-1"></i>Back
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="openBulkUploadModal()">
+                                <i class="fa-solid fa-file-csv me-1"></i>Bulk Upload
+                            </button>
+                            <button class="btn btn-outline-success" onclick="downloadCsvTemplate()">
+                                <i class="fa-solid fa-download me-1"></i>Template
+                            </button>
+                            <button class="btn btn-outline-info" onclick="exportParticipantsCsv()">
+                                <i class="fa-solid fa-file-csv me-1"></i>Export
+                            </button>
+                            <button class="btn btn-success" onclick="openParticipantModal()">
+                                <i class="fa-solid fa-user-plus me-1"></i>Add Participant
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters Card -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-6">
+                            <div class="input-group" style="max-width: 100%;">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass"></i></span>
+                                <input id="participantsSearch" type="text" class="form-control" placeholder="Search name or email">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <select id="participantsStatusFilter" class="form-select">
+                                <option value="">All statuses</option>
+                                <option value="downloaded">Downloaded</option>
+                                <option value="pending">Pending</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 text-end">
+                            <button class="btn btn-outline-secondary w-100" onclick="loadParticipants()">
+                                <i class="fa-solid fa-rotate me-1"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Participants Table -->
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0" id="participantsTable">
+                        <thead>
+                            <tr>
+                                <th role="button" onclick="setParticipantsSort('name')" class="sortable-header">
+                                    Name <i class="fa-solid fa-sort ms-1" id="sort-name"></i>
+                                </th>
+                                <th role="button" onclick="setParticipantsSort('email')" class="sortable-header">
+                                    Email <i class="fa-solid fa-sort ms-1" id="sort-email"></i>
+                                </th>
+                                <th role="button" onclick="setParticipantsSort('certificateStatus')" class="sortable-header">
+                                    Certificate Status <i class="fa-solid fa-sort ms-1" id="sort-certificateStatus"></i>
+                                </th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admins Section -->
+        <div id="adminsSection" class="d-none">
+            <!-- Admin Management Header -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-lg-6">
+                            <h2 class="h4 mb-2 fw-bold">
+                                <i class="fa-solid fa-user-shield me-2 text-primary"></i>Admin Management
+                            </h2>
+                            <p class="text-muted mb-0">Manage admin access and invitations</p>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">
+                                    <i class="fa-solid fa-envelope"></i>
+                                </span>
+                                <input id="newAdminEmail" type="email" class="form-control" placeholder="Enter admin email" aria-label="Admin email">
+                                <button class="btn btn-primary" type="button" onclick="inviteAdminByEmail()">
+                                    <i class="fa-regular fa-paper-plane me-1"></i><span>Invite Admin</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Admins -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="h6 mb-0 fw-bold">
+                        <i class="fa-solid fa-users-gear me-2 text-success"></i>Current Admins
+                    </h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="adminsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="border-0" style="width: 40%">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa-solid fa-envelope me-2 text-muted"></i>
+                                        <span>Email Address</span>
+                                    </div>
+                                </th>
+                                <th class="border-0" style="width: 35%">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa-solid fa-calendar-plus me-2 text-muted"></i>
+                                        <span>Added Date</span>
+                                    </div>
+                                </th>
+                                <th class="border-0 text-end" style="width: 25%">
+                                    <div class="d-flex align-items-center justify-content-end">
+                                        <i class="fa-solid fa-cogs me-2 text-muted"></i>
+                                        <span>Actions</span>
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pending Invites -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="h6 mb-0 fw-bold">
+                        <i class="fa-solid fa-clock me-2 text-warning"></i>Pending Invitations
+                    </h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="invitesTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="border-0" style="width: 40%">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa-solid fa-envelope me-2 text-muted"></i>
+                                        <span>Email Address</span>
+                                    </div>
+                                </th>
+                                <th class="border-0" style="width: 35%">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa-solid fa-calendar-plus me-2 text-muted"></i>
+                                        <span>Invited Date</span>
+                                    </div>
+                                </th>
+                                <th class="border-0 text-end" style="width: 25%">
+                                    <div class="d-flex align-items-center justify-content-end">
+                                        <i class="fa-solid fa-cogs me-2 text-muted"></i>
+                                        <span>Actions</span>
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Modal -->
+    <div class="modal fade" id="eventModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold" id="eventModalTitle">
+                        <i class="fa-solid fa-calendar-plus me-2"></i>Create Event
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="eventForm">
+                        <input type="hidden" id="eventId">
+                        
+                        <!-- Basic Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="fw-bold text-primary mb-3">
+                                    <i class="fa-solid fa-info-circle me-2"></i>Basic Information
+                                </h6>
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label fw-semibold">Event Title *</label>
+                                <input id="eventTitle" class="form-control form-control-lg" placeholder="Enter event title" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-semibold">Event Date *</label>
+                                <input type="date" id="eventDate" class="form-control" required>
+                            </div>
+                        </div>
+                        
+                        <!-- Participant Fields -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-primary mb-3">
+                                <i class="fa-solid fa-list-check me-2"></i>Participant Fields
+                            </h6>
+                            <div class="form-text mb-3">Define custom fields required for each participant. Name and Email are always required.</div>
+                            <div id="eventFieldsContainer" class="border rounded p-3 mb-3 bg-light">
+                                <div class="text-center text-muted py-3">
+                                    <i class="fa-solid fa-plus-circle fa-2x mb-2"></i>
+                                    <p class="mb-0">No custom fields defined yet</p>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button type="button" class="btn btn-outline-primary" onclick="addEventFieldRow()">
+                                    <i class="fa-solid fa-plus me-1"></i>Add Field
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="normalizeEventFields()">
+                                    <i class="fa-solid fa-magic me-1"></i>Normalize Keys
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fa-solid fa-times me-1"></i>Cancel
+                    </button>
+                    <button class="btn btn-primary" onclick="saveEvent()">
+                        <i class="fa-regular fa-floppy-disk me-1"></i>Save Event
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Participant Modal -->
+    <div class="modal fade" id="participantModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold">
+                        <i class="fa-solid fa-user-plus me-2"></i>Add Participant
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="participantForm">
+                        <input type="hidden" id="participantId">
+                        <input type="hidden" id="participantEventId">
+                        
+                        <!-- Basic Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="fw-bold text-success mb-3">
+                                    <i class="fa-solid fa-user me-2"></i>Basic Information
+                                </h6>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">Full Name *</label>
+                                <input id="participantName" class="form-control" placeholder="Enter participant's full name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">Email Address *</label>
+                                <input type="email" id="participantEmail" class="form-control" placeholder="participant@example.com" required>
+                            </div>
+                        </div>
+
+                        <!-- Custom Fields Section -->
+                        <div id="customFieldsSection" class="mb-4" style="display: none;">
+                            <h6 class="fw-bold text-success mb-3">
+                                <i class="fa-solid fa-list-check me-2"></i>Additional Information
+                            </h6>
+                            <div id="customFieldsContainer">
+                                <!-- Dynamic fields will be inserted here -->
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fa-solid fa-times me-1"></i>Cancel
+                    </button>
+                    <button class="btn btn-success" onclick="saveParticipant()">
+                        <i class="fa-regular fa-floppy-disk me-1"></i>Save Participant
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="confirmDeleteMessage">Are you sure?</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Upload Modal -->
+    <div class="modal fade" id="bulkUploadModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title fw-bold">
+                        <i class="fa-solid fa-file-csv me-2"></i>Bulk Upload Participants
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- File Upload Section -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h6 class="fw-bold text-info mb-3">
+                                <i class="fa-solid fa-upload me-2"></i>Upload CSV File
+                            </h6>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Select CSV File</label>
+                                <input type="file" class="form-control form-control-lg" id="bulkCsvInput" accept=".csv">
+                                <div class="form-text mt-2">
+                                    <i class="fa-solid fa-info-circle me-1"></i>
+                                    <strong>Required headers:</strong> email, name. Additional columns will be mapped to custom fields if defined for the event.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview Section -->
+                    <div class="card d-none" id="bulkPreview">
+                        <div class="card-header">
+                            <h6 class="fw-bold text-info mb-0">
+                                <i class="fa-solid fa-eye me-2"></i>Preview & Validation
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered align-middle">
+                                    <thead id="bulkHead" class="table-light"></thead>
+                                    <tbody id="bulkBody"></tbody>
+                                </table>
+                            </div>
+                            <div class="mt-3">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-success">●</span>
+                                            <small>New participants</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-warning">●</span>
+                                            <small>Will update existing</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-danger">●</span>
+                                            <small>Duplicate in CSV</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fa-solid fa-times me-1"></i>Close
+                    </button>
+                    <button class="btn btn-info" id="bulkImportBtn" disabled onclick="uploadBulkParticipants()">
+                        <i class="fa-solid fa-upload me-1"></i>Import Participants
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security: Load security utilities first -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="{{site.baseurl}}/assets/js/security-utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="{{site.baseurl}}/admin/admin-dashboard.js"></script>
+</body>
+</html>
