@@ -848,14 +848,21 @@ function renderParticipantsFromCache() {
         }).join('');
         
         const statusBadge = p.certificateStatus === 'downloaded' 
-            ? '<span class="status-badge success"><i class="fa-solid fa-check me-1"></i>Downloaded</span>'
-            : '<span class="status-badge pending"><i class="fa-solid fa-clock me-1"></i>Pending</span>';
+            ? `<span class="status-badge success" data-participant-id="${p.id}"><i class="fa-solid fa-check me-1"></i>Downloaded</span>`
+            : `<span class="status-badge pending" data-participant-id="${p.id}"><i class="fa-solid fa-clock me-1"></i>Pending</span>`;
         
         return `<tr>
             <td><div class="fw-semibold">${p.name || '—'}</div></td>
             <td><div class="text-muted">${p.email || '—'}</div></td>
             ${customFieldsHtml}
-            <td>${statusBadge}</td>
+            <td>
+                <div class="d-flex align-items-center gap-2">
+                    ${statusBadge}
+                    <button class="btn btn-sm btn-outline-secondary p-1" onclick="refreshParticipantStatus('${p.id}')" title="Refresh status">
+                        <i class="fas fa-sync-alt" style="font-size: 0.75rem;"></i>
+                    </button>
+                </div>
+            </td>
             <td class="text-end">
                 <div class="action-buttons">
                     <button class="btn btn-sm btn-outline-primary" onclick="openParticipantModal('${p.id}')" title="Edit">
@@ -911,6 +918,51 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Refresh a single participant's certificate status (read-only)
+async function refreshParticipantStatus(participantId) {
+    if (!selectedEvent || !participantId) return;
+    try {
+        // Locate the badge for this participant
+        const rowButton = document.querySelector(`button[onclick="refreshParticipantStatus('${participantId}')"]`);
+        const row = rowButton?.closest('tr');
+        const badge = row?.querySelector(`[data-participant-id="${participantId}"]`);
+        
+        // Show spinner while fetching
+        const originalHtml = badge?.innerHTML;
+        if (badge) {
+            badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
+        
+        // Read latest participant doc
+        const doc = await db.collection('events').doc(selectedEvent.id)
+            .collection('participants').doc(participantId).get();
+        const data = doc.data() || {};
+        const status = data.certificateStatus || 'pending';
+        
+        // Update local cache
+        const idx = participantsCache.findIndex(p => p.id === participantId);
+        if (idx !== -1) {
+            participantsCache[idx] = { ...participantsCache[idx], certificateStatus: status };
+        }
+        
+        // Update badge UI
+        if (badge) {
+            if (status === 'downloaded') {
+                badge.className = 'status-badge success';
+                badge.innerHTML = '<i class="fa-solid fa-check me-1"></i>Downloaded';
+            } else {
+                badge.className = 'status-badge pending';
+                badge.innerHTML = '<i class="fa-solid fa-clock me-1"></i>Pending';
+            }
+        }
+        
+        showAlert('Participant status refreshed', 'success', 1500);
+    } catch (error) {
+        console.error('Failed to refresh participant status:', error);
+        showAlert('Failed to refresh status', 'danger', 2000);
+    }
+}
+
 // Participants Table Head Rendering
 function renderParticipantsTableHead() {
     const thead = document.querySelector('#participantsTable thead');
@@ -943,6 +995,7 @@ function renderParticipantsTableHead() {
 window.renderParticipantsFromCache = renderParticipantsFromCache;
 window.setParticipantsSort = setParticipantsSort;
 window.renderParticipantsTableHead = renderParticipantsTableHead;
+window.refreshParticipantStatus = refreshParticipantStatus;
 
 // Bulk Upload Functionality
 const bulkUploadModal = new bootstrap.Modal(document.getElementById('bulkUploadModal'));
