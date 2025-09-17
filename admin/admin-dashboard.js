@@ -19,6 +19,8 @@ let currentUser = null;
 let selectedEvent = null;
 let participantsCache = [];
 let eventsCache = [];
+let adminsCache = [];
+let invitesCache = [];
 let participantsSortKey = 'name';
 let participantsSortDir = 'asc';
 let bulkRows = [];
@@ -121,24 +123,31 @@ auth.onAuthStateChanged(async (user) => {
         el('signinBtn').classList.add('d-none');
         el('signoutBtn').classList.remove('d-none');
         
-        // UID-based admin gating with invite auto-promotion
-        const adminDoc = await db.collection('admins').doc(user.uid).get();
-        if (!adminDoc.exists) {
-            const inviteDoc = await db.collection('invites').doc((user.email || '').toLowerCase()).get();
-            if (inviteDoc.exists) {
-                await db.collection('admins').doc(user.uid).set({ 
-                    email: (user.email || '').toLowerCase(), 
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp() 
-        }, { merge: true });
-                await db.collection('invites').doc((user.email || '').toLowerCase()).delete().catch(() => {});
-            }
-        }
+        // Optimized admin verification with single query approach
+        const userEmail = (user.email || '').toLowerCase();
         
-        const check = await db.collection('admins').doc(user.uid).get();
-        if (!check.exists) { 
-            showGate('Access denied. Ask an existing admin to invite you.'); 
-            await auth.signOut().catch(() => {}); 
-            return; 
+        // Single query to get admin status
+        const adminDoc = await db.collection('admins').doc(user.uid).get();
+        
+        if (!adminDoc.exists) {
+            // Check for invite and auto-promote if found
+            const inviteDoc = await db.collection('invites').doc(userEmail).get();
+            if (inviteDoc.exists) {
+                // Auto-promote from invite to admin
+                await db.collection('admins').doc(user.uid).set({ 
+                    email: userEmail, 
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+                }, { merge: true });
+                await db.collection('invites').doc(userEmail).delete().catch(() => {});
+                
+                // Update caches
+                adminsCache.push({ id: user.uid, email: userEmail, createdAt: new Date() });
+                invitesCache = invitesCache.filter(invite => invite.email !== userEmail);
+            } else {
+                showGate('Access denied. Ask an existing admin to invite you.'); 
+                await auth.signOut().catch(() => {}); 
+                return; 
+            }
         }
         
         showApp();
@@ -249,6 +258,8 @@ async function loadEvents() {
         
         // Cache events data
         eventsCache = docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        const rows = [];
         
         // Process each event using cached participant count and real-time certificate count
         for (const doc of docs) {
@@ -1248,112 +1259,134 @@ async function loadAdmins() {
     const tbody = document.querySelector('#adminsTable tbody');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading admins...</div></td></tr>';
-    
-    try {
-        const snap = await db.collection('admins').orderBy('createdAt', 'desc').get();
+    // If cache is empty, load from database
+    if (adminsCache.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading admins...</div></td></tr>';
         
-        if (snap.empty) {
+        try {
+            const snap = await db.collection('admins').orderBy('createdAt', 'desc').get();
+            adminsCache = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (error) {
             tbody.innerHTML = `
                 <tr><td colspan="3" class="empty-state">
-                    <i class="fa-solid fa-user-shield"></i>
-                    <h6 class="mt-2">No admins found</h6>
-                    <p class="mb-0">Invite your first admin to get started</p>
+                    <i class="fa-solid fa-exclamation-triangle text-danger"></i>
+                    <h6 class="mt-2">Error loading admins</h6>
+                    <p class="mb-0 text-danger">${error.message}</p>
                 </td></tr>`;
             return;
         }
-        
-        tbody.innerHTML = snap.docs.map(doc => {
-            const admin = doc.data();
-            const isCurrentUser = doc.id === currentUser?.uid;
-            
-            return `
-                <tr>
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="fa-solid fa-envelope text-muted"></i>
-                            <span class="fw-semibold">${admin.email || 'Unknown'}</span>
-                            ${isCurrentUser ? '<span class="badge bg-primary">You</span>' : ''}
-                        </div>
-                    </td>
-                    <td>
-                        <div class="text-muted small">
-                            ${admin.createdAt ? new Date(admin.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'}
-                        </div>
-                    </td>
-                <td class="text-end">
-                        ${!isCurrentUser ? `
-                            <button class="btn btn-sm btn-outline-danger" onclick="confirmRemoveAdmin('${doc.id}','${admin.email}')" title="Remove Admin">
-                                <i class="fa-regular fa-trash-can"></i>
-                        </button>
-                        ` : '<span class="text-muted small">Cannot remove yourself</span>'}
-                </td>
-                </tr>
-            `;
-        }).join('');
-        
-    } catch (error) {
+    }
+    
+    // Render from cache
+    renderAdminsFromCache();
+}
+
+function renderAdminsFromCache() {
+    const tbody = document.querySelector('#adminsTable tbody');
+    if (!tbody || !adminsCache) return;
+    
+    if (adminsCache.length === 0) {
         tbody.innerHTML = `
             <tr><td colspan="3" class="empty-state">
-                <i class="fa-solid fa-exclamation-triangle text-danger"></i>
-                <h6 class="mt-2">Error loading admins</h6>
-                <p class="mb-0 text-danger">${error.message}</p>
-            </td></tr>`;
+                <i class="fa-solid fa-user-shield"></i>
+                <h6 class="mt-2">No admins found</h6>
+                <p class="mb-0">Invite your first admin to get started</p>
+            </td></tr>
+        `;
+        return;
     }
+    
+    tbody.innerHTML = adminsCache.map(admin => {
+        const isCurrentUser = admin.id === currentUser?.uid;
+        
+        return `
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-envelope text-muted"></i>
+                        <span class="fw-semibold">${admin.email || 'Unknown'}</span>
+                        ${isCurrentUser ? '<span class="badge bg-primary">You</span>' : ''}
+                    </div>
+                </td>
+                <td>
+                    <div class="text-muted small">
+                        ${admin.createdAt ? new Date(admin.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'}
+                    </div>
+                </td>
+                <td class="text-end">
+                    ${!isCurrentUser ? `
+                        <button class="btn btn-sm btn-outline-danger" onclick="confirmRemoveAdmin('${admin.id}','${admin.email}')" title="Remove Admin">
+                            <i class="fa-regular fa-trash-can"></i>
+                        </button>
+                    ` : '<span class="text-muted small">Cannot remove yourself</span>'}
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 async function loadInvites() {
     const tbody = document.querySelector('#invitesTable tbody');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading invites...</div></td></tr>';
-    
-    try {
-        const snap = await db.collection('invites').orderBy('createdAt', 'desc').get();
+    // If cache is empty, load from database
+    if (invitesCache.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading invites...</div></td></tr>';
         
-        if (snap.empty) {
+        try {
+            const snap = await db.collection('invites').orderBy('createdAt', 'desc').get();
+            invitesCache = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (error) {
             tbody.innerHTML = `
                 <tr><td colspan="3" class="empty-state">
-                    <i class="fa-solid fa-envelope-open"></i>
-                    <h6 class="mt-2">No pending invites</h6>
-                    <p class="mb-0">All invitations have been accepted</p>
+                    <i class="fa-solid fa-exclamation-triangle text-danger"></i>
+                    <h6 class="mt-2">Error loading invites</h6>
+                    <p class="mb-0 text-danger">${error.message}</p>
                 </td></tr>`;
+            return;
+        }
+    }
+    
+    // Render from cache
+    renderInvitesFromCache();
+}
+
+function renderInvitesFromCache() {
+    const tbody = document.querySelector('#invitesTable tbody');
+    if (!tbody || !invitesCache) return;
+    
+    if (invitesCache.length === 0) {
+        tbody.innerHTML = `
+            <tr><td colspan="3" class="empty-state">
+                <i class="fa-solid fa-envelope-open"></i>
+                <h6 class="mt-2">No pending invites</h6>
+                <p class="mb-0">All invitations have been accepted</p>
+            </td></tr>`;
         return;
     }
     
-        tbody.innerHTML = snap.docs.map(doc => {
-            const invite = doc.data();
-            
-            return `
-                <tr>
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="fa-solid fa-envelope text-warning"></i>
-                            <span class="fw-semibold">${doc.id}</span>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="text-muted small">
-                            ${invite.createdAt ? new Date(invite.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'}
-                        </div>
-                    </td>
-                <td class="text-end">
-                        <button class="btn btn-sm btn-outline-danger" onclick="confirmRevokeInvite('${doc.id}')" title="Revoke Invite">
-                            <i class="fa-regular fa-trash-can"></i>
-                        </button>
+    tbody.innerHTML = invitesCache.map(invite => {
+        return `
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-envelope text-warning"></i>
+                        <span class="fw-semibold">${invite.id}</span>
+                    </div>
                 </td>
-                </tr>
-            `;
-        }).join('');
-        
-    } catch (error) {
-        tbody.innerHTML = `
-            <tr><td colspan="3" class="empty-state">
-                <i class="fa-solid fa-exclamation-triangle text-danger"></i>
-                <h6 class="mt-2">Error loading invites</h6>
-                <p class="mb-0 text-danger">${error.message}</p>
-            </td></tr>`;
-    }
+                <td>
+                    <div class="text-muted small">
+                        ${invite.createdAt ? new Date(invite.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'}
+                    </div>
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger" onclick="confirmRevokeInvite('${invite.id}')" title="Revoke Invite">
+                        <i class="fa-regular fa-trash-can"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 async function inviteAdminByEmail() {
@@ -1363,16 +1396,16 @@ async function inviteAdminByEmail() {
     if (!email.includes('@')) return showAlert('Please enter a valid email address', 'warning');
     
     try {
-        // Check if already an admin
-        const adminSnap = await db.collection('admins').where('email', '==', email).limit(1).get();
-        if (!adminSnap.empty) {
+        // Check if already an admin using cache
+        const existingAdmin = adminsCache.find(admin => admin.email === email);
+        if (existingAdmin) {
             showAlert('This email is already an admin', 'warning');
             return;
         }
         
-        // Check if already invited
-        const inviteDoc = await db.collection('invites').doc(email).get();
-        if (inviteDoc.exists) {
+        // Check if already invited using cache
+        const existingInvite = invitesCache.find(invite => invite.id === email);
+        if (existingInvite) {
             showAlert('This email has already been invited', 'warning');
             return;
         }
@@ -1384,9 +1417,19 @@ async function inviteAdminByEmail() {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
+        // Update cache
+        invitesCache.push({ 
+            id: email, 
+            email: email, 
+            invitedBy: currentUser.email, 
+            createdAt: new Date() 
+        });
+        
         el('newAdminEmail').value = '';
         showAlert(`Invitation sent to ${email}`, 'success');
-        loadInvites();
+        
+        // Update UI from cache
+        renderInvitesFromCache();
         
     } catch (error) {
         showAlert('Failed to send invitation: ' + error.message, 'danger');
@@ -1397,8 +1440,14 @@ function confirmRemoveAdmin(adminId, email) {
     showConfirm(`Remove admin access for ${email}?`, async () => {
         try {
             await db.collection('admins').doc(adminId).delete();
+            
+            // Update cache
+            adminsCache = adminsCache.filter(admin => admin.id !== adminId);
+            
+            // Update UI from cache
+            renderAdminsFromCache();
+            
             showAlert('Admin access removed', 'success');
-            loadAdmins();
         } catch (error) {
             showAlert('Failed to remove admin: ' + error.message, 'danger');
         }
@@ -1409,8 +1458,14 @@ function confirmRevokeInvite(email) {
     showConfirm(`Revoke invitation for ${email}?`, async () => {
         try {
             await db.collection('invites').doc(email).delete();
+            
+            // Update cache
+            invitesCache = invitesCache.filter(invite => invite.id !== email);
+            
+            // Update UI from cache
+            renderInvitesFromCache();
+            
             showAlert('Invitation revoked', 'success');
-            loadInvites();
         } catch (error) {
             showAlert('Failed to revoke invitation: ' + error.message, 'danger');
         }
@@ -1418,7 +1473,9 @@ function confirmRevokeInvite(email) {
 }
 
 window.loadAdmins = loadAdmins;
+window.renderAdminsFromCache = renderAdminsFromCache;
 window.loadInvites = loadInvites;
+window.renderInvitesFromCache = renderInvitesFromCache;
 window.inviteAdminByEmail = inviteAdminByEmail;
 window.confirmRemoveAdmin = confirmRemoveAdmin;
 window.confirmRevokeInvite = confirmRevokeInvite;
