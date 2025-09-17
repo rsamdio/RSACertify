@@ -167,6 +167,71 @@ function switchTab(name) {
 }
 
 // Events Management
+async function refreshCertificateCount(eventId) {
+    console.log('Refreshing certificate count for event:', eventId);
+    
+    try {
+        // Find the refresh button that was clicked
+        const refreshBtn = document.querySelector(`button[onclick="refreshCertificateCount('${eventId}')"]`);
+        if (!refreshBtn) {
+            console.error('Refresh button not found for event:', eventId);
+            showAlert('Refresh button not found', 'danger', 3000);
+            return;
+        }
+        
+        // Find the target row and badge
+        const targetRow = refreshBtn.closest('tr');
+        if (!targetRow) {
+            console.error('Target row not found');
+            showAlert('Target row not found', 'danger', 3000);
+            return;
+        }
+        
+        // Find the certificate count badge (should be the second badge in the row)
+        const badges = targetRow.querySelectorAll('.badge');
+        const targetBadge = badges[1]; // Second badge should be the certificate count
+        
+        if (!targetBadge) {
+            console.error('Certificate count badge not found');
+            showAlert('Certificate count badge not found', 'danger', 3000);
+            return;
+        }
+        
+        console.log('Found target badge:', targetBadge);
+        
+        // Show loading state
+        const originalText = targetBadge.textContent;
+        targetBadge.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        // Query for updated certificate count
+        console.log('Querying certificate count...');
+        const certificatesSnap = await db.collection('events').doc(eventId).collection('participants').where('certificateStatus', '==', 'downloaded').get();
+        const certificatesCount = certificatesSnap.size;
+        
+        console.log('Certificate count result:', certificatesCount);
+        
+        // Update the badge
+        targetBadge.textContent = certificatesCount;
+        
+        showAlert(`Certificate count refreshed: ${certificatesCount} issued`, 'success', 2000);
+        
+    } catch (error) {
+        console.error('Error refreshing certificate count:', error);
+        showAlert('Failed to refresh certificate count: ' + error.message, 'danger', 3000);
+        
+        // Restore original text on error
+        const refreshBtn = document.querySelector(`button[onclick="refreshCertificateCount('${eventId}')"]`);
+        if (refreshBtn) {
+            const targetRow = refreshBtn.closest('tr');
+            const badges = targetRow?.querySelectorAll('.badge');
+            const targetBadge = badges?.[1];
+            if (targetBadge) {
+                targetBadge.textContent = originalText;
+            }
+        }
+    }
+}
+
 async function loadEvents() {
     const tbody = document.querySelector('#eventsTable tbody');
     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading events...</div></td></tr>';
@@ -214,8 +279,11 @@ async function loadEvents() {
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge bg-success fs-6">${certificatesCount}</span>
                         <span class="text-muted small">issued</span>
-                            </div>
-                        </td>
+                        <button class="btn btn-sm btn-outline-secondary p-1 ms-1" onclick="refreshCertificateCount('${doc.id}')" title="Refresh certificate count">
+                            <i class="fas fa-sync-alt" style="font-size: 0.75rem;"></i>
+                        </button>
+                    </div>
+                </td>
                 <td>
                     <div class="text-muted small">
                         ${e.updatedAt ? new Date(e.updatedAt.seconds * 1000).toLocaleDateString() : '-'}
@@ -1167,3 +1235,4 @@ window.loadInvites = loadInvites;
 window.inviteAdminByEmail = inviteAdminByEmail;
 window.confirmRemoveAdmin = confirmRemoveAdmin;
 window.confirmRevokeInvite = confirmRevokeInvite;
+window.refreshCertificateCount = refreshCertificateCount;
