@@ -22,6 +22,7 @@ let participantsSortKey = 'name';
 let participantsSortDir = 'asc';
 let bulkRows = [];
 let existingByEmail = {};
+let adminsLoaded = false;
 
 // Utility functions
 function el(id) { return document.getElementById(id); }
@@ -141,8 +142,6 @@ auth.onAuthStateChanged(async (user) => {
         
         showApp();
         loadEvents();
-        loadAdmins();
-        loadInvites();
         
     } catch (error) {
         showGate('Error verifying admin access: ' + error.message);
@@ -158,6 +157,13 @@ function switchTab(name) {
     el('tab-events').classList.toggle('active', name === 'events');
     el('tab-participants').classList.toggle('active', name === 'participants');
     el('tab-admins').classList.toggle('active', name === 'admins');
+    
+    // Load data only when tab is accessed (lazy loading)
+    if (name === 'admins' && !adminsLoaded) {
+        loadAdmins();
+        loadInvites();
+        adminsLoaded = true;
+    }
 }
 
 // Events Management
@@ -177,23 +183,16 @@ async function loadEvents() {
         
         const rows = [];
         
-        // Process each event and get real-time participant and certificate counts
+        // Process each event using cached participant count and real-time certificate count
         for (const doc of docs) {
             const e = doc.data();
             
-            // Get real-time participant count and certificate count
-            const participantsSnap = await db.collection('events').doc(doc.id).collection('participants').get();
-            const participantsCount = participantsSnap.size;
-            const certificatesCount = participantsSnap.docs.filter(participantDoc => {
-                const participantData = participantDoc.data();
-                return participantData.certificateStatus === 'downloaded';
-            }).length;
+            // Use cached participant count from event document (cost efficient)
+            const participantsCount = e.participantsCount || 0;
             
-            // Update the event document with real-time counts
-            await db.collection('events').doc(doc.id).set({
-                participantsCount: participantsCount,
-                certificatesCount: certificatesCount
-            }, { merge: true });
+            // Get real-time certificate count with targeted query (read-only for display)
+            const certificatesSnap = await db.collection('events').doc(doc.id).collection('participants').where('certificateStatus', '==', 'downloaded').get();
+            const certificatesCount = certificatesSnap.size;
             
             rows.push(`<tr>
                 <td>
@@ -447,10 +446,8 @@ async function loadParticipants() {
         el('participantsCount').innerText = snap.size;
         
         // Update both participant count and certificate count in event document
-        const certificatesCount = snap.docs.filter(doc => {
-            const data = doc.data();
-            return data.certificateStatus === 'downloaded';
-        }).length;
+        const certificatesSnap = await db.collection('events').doc(selectedEvent.id).collection('participants').where('certificateStatus', '==', 'downloaded').get();
+        const certificatesCount = certificatesSnap.size;
         
         await db.collection('events').doc(selectedEvent.id).set({
                     participantsCount: snap.size,
