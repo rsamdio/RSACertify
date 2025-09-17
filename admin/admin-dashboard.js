@@ -18,6 +18,7 @@ const db = firebase.firestore();
 let currentUser = null;
 let selectedEvent = null;
 let participantsCache = [];
+let eventsCache = [];
 let participantsSortKey = 'name';
 let participantsSortDir = 'asc';
 let bulkRows = [];
@@ -203,10 +204,10 @@ async function refreshCertificateCount(eventId) {
         const originalText = targetBadge.textContent;
         targetBadge.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         
-        // Query for updated certificate count
+        // Query for updated certificate count (optimized - single query)
         console.log('Querying certificate count...');
-        const certificatesSnap = await db.collection('events').doc(eventId).collection('participants').where('certificateStatus', '==', 'downloaded').get();
-        const certificatesCount = certificatesSnap.size;
+        const participantsSnap = await db.collection('events').doc(eventId).collection('participants').get();
+        const certificatesCount = participantsSnap.docs.filter(doc => doc.data().certificateStatus === 'downloaded').length;
         
         console.log('Certificate count result:', certificatesCount);
         
@@ -246,7 +247,8 @@ async function loadEvents() {
             return tb - ta;
         });
         
-        const rows = [];
+        // Cache events data
+        eventsCache = docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
         // Process each event using cached participant count and real-time certificate count
         for (const doc of docs) {
@@ -332,6 +334,66 @@ async function loadEvents() {
     }
 }
 
+function renderEventsFromCache() {
+    const tbody = document.querySelector('#eventsTable tbody');
+    if (!tbody || !eventsCache) return;
+    
+    const rows = eventsCache.map(e => {
+        const participantsCount = e.participantsCount || 0;
+        const certificatesCount = e.certificatesCount || 0;
+        
+        return `<tr>
+            <td>
+                <div class="fw-semibold fs-6">${e.title || '(untitled)'}</div>
+                <div class="text-muted small">
+                    <i class="fa-solid fa-calendar me-1"></i>${e.date || 'No date set'}
+                </div>
+                <div class="text-muted small">
+                    <i class="fa-solid fa-hashtag me-1"></i>${e.id}
+                </div>
+            </td>
+            <td>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary fs-6">${participantsCount}</span>
+                    <span class="text-muted small">participants</span>
+                </div>
+            </td>
+            <td>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-success fs-6">${certificatesCount}</span>
+                    <span class="text-muted small">issued</span>
+                    <button class="btn btn-sm btn-outline-secondary p-1 ms-1" onclick="refreshCertificateCount('${e.id}')" title="Refresh certificate count">
+                        <i class="fas fa-sync-alt" style="font-size: 0.75rem;"></i>
+                    </button>
+                </div>
+            </td>
+            <td>
+                <div class="text-muted small">
+                    ${e.updatedAt ? new Date(e.updatedAt.seconds * 1000).toLocaleDateString() : '-'}
+                </div>
+                <div class="text-muted small">
+                    ${e.createdAt ? new Date(e.createdAt.seconds * 1000).toLocaleDateString() : '-'}
+                </div>
+            </td>
+            <td class="text-end">
+                <div class="action-buttons">
+                    <button class="btn btn-sm btn-outline-primary" onclick="openEventModal('${e.id}')" title="Edit Event">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    <button class="btn btn-sm btn-primary" onclick="manageParticipants('${e.id}')" title="Manage Participants">
+                        <i class="fa-solid fa-users"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteEvent('${e.id}','${(e.title || '').replace(/\"/g,'\\\"')}')" title="Delete Event">
+                        <i class="fa-regular fa-trash-can"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+    
+    tbody.innerHTML = rows;
+}
+
 const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
 function openEventModal(id) {
     el('eventForm').reset();
@@ -370,7 +432,22 @@ async function saveEvent() {
             await db.collection('events').doc(ref.id).set({ participantsCount: 0, certificatesCount: 0 }, { merge: true }); 
         }
         eventModal.hide(); 
-        loadEvents();
+        
+        // Update events cache instead of full reload
+        if (id) {
+            // Update existing event in cache
+            const eventIndex = eventsCache?.findIndex(e => e.id === id);
+            if (eventIndex !== undefined && eventIndex !== -1 && eventsCache) {
+                eventsCache[eventIndex] = { id, ...payload };
+            }
+        } else {
+            // Add new event to cache
+            if (!eventsCache) eventsCache = [];
+            eventsCache.push({ id: ref.id, ...payload, participantsCount: 0, certificatesCount: 0 });
+        }
+        
+        // Re-render events table
+        renderEventsFromCache();
     } catch (e) {
         showAlert('Failed: ' + e.message, 'danger');
     }
@@ -378,8 +455,18 @@ async function saveEvent() {
 
 function confirmDeleteEvent(id, title) {
     showConfirm(`Delete event "${title}" and all its participants?`, async () => {
-        await deleteEventCascade(id);
-        loadEvents();
+        try {
+            await deleteEventCascade(id);
+            
+            // Update events cache instead of full reload
+            if (eventsCache) {
+                eventsCache = eventsCache.filter(e => e.id !== id);
+                renderEventsFromCache();
+            }
+            
+        } catch (error) {
+            showAlert('Failed to delete event: ' + error.message, 'danger');
+        }
     });
 }
 
@@ -488,6 +575,7 @@ window.signIn = signIn;
 window.signOut = signOut;
 window.switchTab = switchTab;
 window.loadEvents = loadEvents;
+window.renderEventsFromCache = renderEventsFromCache;
 window.openEventModal = openEventModal;
 window.saveEvent = saveEvent;
 window.confirmDeleteEvent = confirmDeleteEvent;
@@ -513,9 +601,8 @@ async function loadParticipants() {
                 // Update participant count display
         el('participantsCount').innerText = snap.size;
         
-        // Update both participant count and certificate count in event document
-        const certificatesSnap = await db.collection('events').doc(selectedEvent.id).collection('participants').where('certificateStatus', '==', 'downloaded').get();
-        const certificatesCount = certificatesSnap.size;
+        // Calculate certificate count from already fetched data (no additional query needed)
+        const certificatesCount = participantsCache.filter(p => p.certificateStatus === 'downloaded').length;
         
         await db.collection('events').doc(selectedEvent.id).set({
                     participantsCount: snap.size,
@@ -573,25 +660,26 @@ function openParticipantModal(id) {
         customFieldsSection.style.display = 'none';
     }
     
-    // Load existing data if editing
+    // Load existing data if editing (use local cache instead of database query)
     if (id) {
-        db.collection('events').doc(selectedEvent.id).collection('participants').doc(id).get().then(d => { 
-            const p = d.data();
-            el('participantName').value = p.name || '';
-            el('participantEmail').value = p.email || '';
+        const participant = participantsCache.find(p => p.id === id);
+        if (participant) {
+            el('participantName').value = participant.name || '';
+            el('participantEmail').value = participant.email || '';
             
             // Load custom fields
             (selectedEvent.data.participantFields || []).forEach(f => {
-                const v = (p.additionalFields || {})[f.key] || '';
+                const v = (participant.additionalFields || {})[f.key] || '';
                 const input = document.getElementById('pf_' + f.key);
                 if (input) input.value = v;
             });
-            
-            participantModal.show(); 
-        });
-    } else {
-        participantModal.show(); 
+        } else {
+            showAlert('Participant not found in cache. Please refresh the participants list.', 'warning');
+            return;
+        }
     }
+    
+    participantModal.show();
 }
 
 async function saveParticipant() {
@@ -608,10 +696,10 @@ async function saveParticipant() {
     
     if (!payload.name || !payload.email) return showAlert('Name and email are required', 'warning'); 
     
-    // Check for duplicate email (only for new participants)
+    // Check for duplicate email using local cache (only for new participants)
     if (!id) {
-        const existing = await db.collection('events').doc(eventId).collection('participants').where('email', '==', email).limit(1).get();
-        if (!existing.empty) {
+        const existing = participantsCache.find(p => p.email.toLowerCase() === email);
+        if (existing) {
             showAlert('A participant with this email already exists in this event.', 'warning');
             return;
         }
@@ -634,13 +722,38 @@ async function saveParticipant() {
     
     try {
         if (id) {
+            // Update existing participant
             await db.collection('events').doc(eventId).collection('participants').doc(id).set(payload, { merge: true }); 
+            
+            // Update local cache
+            const index = participantsCache.findIndex(p => p.id === id);
+            if (index !== -1) {
+                participantsCache[index] = { id, ...payload };
+            }
         } else {
+            // Add new participant
             payload.createdAt = firebase.firestore.FieldValue.serverTimestamp(); 
-            await db.collection('events').doc(eventId).collection('participants').add(payload); 
+            const docRef = await db.collection('events').doc(eventId).collection('participants').add(payload); 
+            
+            // Add to local cache
+            participantsCache.push({ id: docRef.id, ...payload });
         }
+        
         participantModal.hide(); 
-        loadParticipants();
+        
+        // Update UI without full reload
+        renderParticipantsFromCache();
+        
+        // Update participant count display
+        el('participantsCount').innerText = participantsCache.length;
+        
+        // Update event document counts
+        const certificatesCount = participantsCache.filter(p => p.certificateStatus === 'downloaded').length;
+        await db.collection('events').doc(eventId).set({
+            participantsCount: participantsCache.length,
+            certificatesCount: certificatesCount
+        }, { merge: true });
+        
     } catch (e) {
         showAlert('Failed: ' + e.message, 'danger');
     }
@@ -648,8 +761,28 @@ async function saveParticipant() {
 
 function confirmDeleteParticipant(id, name) {
     showConfirm(`Delete participant "${name}"?`, async () => {
-        await db.collection('events').doc(selectedEvent.id).collection('participants').doc(id).delete(); 
-        loadParticipants();
+        try {
+            await db.collection('events').doc(selectedEvent.id).collection('participants').doc(id).delete(); 
+            
+            // Update local cache
+            participantsCache = participantsCache.filter(p => p.id !== id);
+            
+            // Update UI without full reload
+            renderParticipantsFromCache();
+            
+            // Update participant count display
+            el('participantsCount').innerText = participantsCache.length;
+            
+            // Update event document counts
+            const certificatesCount = participantsCache.filter(p => p.certificateStatus === 'downloaded').length;
+            await db.collection('events').doc(selectedEvent.id).set({
+                participantsCount: participantsCache.length,
+                certificatesCount: certificatesCount
+            }, { merge: true });
+            
+        } catch (error) {
+            showAlert('Failed to delete participant: ' + error.message, 'danger');
+        }
     });
 }
 
@@ -877,12 +1010,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                // Get existing participants for duplicate detection
-                const existingSnap = await db.collection('events').doc(selectedEvent.id).collection('participants').get();
+                // Use local cache for duplicate detection (no database query needed)
                 existingByEmail = {};
-                existingSnap.forEach(doc => {
-                    const data = doc.data();
-                    existingByEmail[data.email?.toLowerCase() || ''] = doc.id;
+                participantsCache.forEach(p => {
+                    if (p.email) {
+                        existingByEmail[p.email.toLowerCase()] = p.id;
+                    }
                 });
                 
                 // Process rows
@@ -987,9 +1120,63 @@ async function uploadBulkParticipants() {
         imported += Math.min(CHUNK, bulkRows.length - i);
     }
     
+        // Update local cache with new/updated participants
+        bulkRows.forEach(row => {
+            const existingId = existingByEmail[row.email];
+            const participantData = {
+                name: row.name,
+                email: row.email,
+                certificateStatus: 'pending',
+                additionalFields: Object.fromEntries(
+                    Object.entries(row).filter(([key]) => !['name', 'email', '_dupCSV', '_exists'].includes(key))
+                ),
+                updatedAt: new Date()
+            };
+            
+            if (existingId) {
+                // Update existing participant in cache
+                const index = participantsCache.findIndex(p => p.id === existingId);
+                if (index !== -1) {
+                    participantsCache[index] = { id: existingId, ...participantData };
+                }
+            } else {
+                // For new participants, we need to reload to get the actual IDs
+                // This is a limitation of batch operations - we don't get the generated IDs back
+                // So we'll do a minimal reload just for the new participants
+            }
+        });
+        
+        // For new participants, we need to reload to get their actual IDs
+        // But we can optimize by only reloading if there were new participants
+        const hasNewParticipants = bulkRows.some(row => !existingByEmail[row.email]);
+        if (hasNewParticipants) {
+            // Reload only the new participants to get their IDs
+            const newEmails = bulkRows.filter(row => !existingByEmail[row.email]).map(row => row.email);
+            const newParticipantsSnap = await db.collection('events').doc(selectedEvent.id)
+                .collection('participants').where('email', 'in', newEmails).get();
+            
+            // Add new participants to cache
+            newParticipantsSnap.docs.forEach(doc => {
+                const data = doc.data();
+                participantsCache.push({ id: doc.id, ...data });
+            });
+        }
+        
+        // Update UI without full reload
+        renderParticipantsFromCache();
+        
+        // Update participant count display
+        el('participantsCount').innerText = participantsCache.length;
+        
+        // Update event document counts
+        const certificatesCount = participantsCache.filter(p => p.certificateStatus === 'downloaded').length;
+        await db.collection('events').doc(selectedEvent.id).set({
+            participantsCount: participantsCache.length,
+            certificatesCount: certificatesCount
+        }, { merge: true });
+        
         showAlert(`Successfully imported ${imported} participants`, 'success');
         bulkUploadModal.hide();
-        loadParticipants();
         
     } catch (error) {
         showAlert('Import failed: ' + error.message, 'danger');
