@@ -10,19 +10,40 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+let auth, db;
+try {
+    // Check if Firebase is already initialized
+    if (firebase.apps.length === 0) {
+        firebase.initializeApp(firebaseConfig);
+        console.log('✅ Firebase initialized successfully');
+    } else {
+        console.log('✅ Firebase already initialized');
+    }
+    
+    auth = firebase.auth();
+    db = firebase.firestore();
+    
+    // Configure Firestore settings
+    db.settings({
+        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+    });
+    
+    console.log('✅ Firebase auth and firestore ready');
+} catch (error) {
+    console.error('❌ Firebase initialization failed:', error);
+    throw error;
+}
 
 // Global variables
 let currentUser = null;
 let selectedEvent = null;
-let participantsCache = [];
+let participantsManager = null; // New optimized participants manager
+let participantsCache = []; // Fallback cache for participants
+let participantsSortKey = 'name'; // Sort key for participants
+let participantsSortDir = 'asc'; // Sort direction for participants
 let eventsCache = [];
 let adminsCache = [];
 let invitesCache = [];
-let participantsSortKey = 'name';
-let participantsSortDir = 'asc';
 let bulkRows = [];
 let existingByEmail = {};
 let adminsLoaded = false;
@@ -88,6 +109,11 @@ function showAlert(message, type = 'info', duration = 5000) {
 // Authentication functions
         async function signIn() {
             try {
+                if (!auth) {
+                    showAlert('Firebase authentication not available. Please refresh the page.', 'danger');
+                    return;
+                }
+                
         const provider = new firebase.auth.GoogleAuthProvider();
                 provider.addScope('email');
                 
@@ -95,6 +121,7 @@ function showAlert(message, type = 'info', duration = 5000) {
             showAlert('Opening Google sign-in popup...', 'info', 2000);
             await auth.signInWithPopup(provider);
                 } catch (popupError) {
+            console.error('Sign-in popup error:', popupError);
             if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
                 showAlert('Popup blocked. Redirecting to Google sign-in...', 'warning', 3000);
             } else {
@@ -108,56 +135,76 @@ function showAlert(message, type = 'info', duration = 5000) {
 }
 
 function signOut() { 
-    auth.signOut(); 
+    if (auth) {
+        auth.signOut(); 
+    } else {
+        console.error('Firebase auth not available for sign out');
+    }
 }
 
 // Setup authentication
-auth.onAuthStateChanged(async (user) => {
-    currentUser = user;
-    if (!user) { 
-        showGate('Sign in to continue.'); 
-        return;
-    }
-    
-    try {
-        el('signinBtn').classList.add('d-none');
-        el('signoutBtn').classList.remove('d-none');
-        
-        // Optimized admin verification with single query approach
-        const userEmail = (user.email || '').toLowerCase();
-        
-        // Single query to get admin status
-        const adminDoc = await db.collection('admins').doc(user.uid).get();
-        
-        if (!adminDoc.exists) {
-            // Check for invite and auto-promote if found
-            const inviteDoc = await db.collection('invites').doc(userEmail).get();
-            if (inviteDoc.exists) {
-                // Auto-promote from invite to admin
-                await db.collection('admins').doc(user.uid).set({ 
-                    email: userEmail, 
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp() 
-                }, { merge: true });
-                await db.collection('invites').doc(userEmail).delete().catch(() => {});
-                
-                // Update caches
-                adminsCache.push({ id: user.uid, email: userEmail, createdAt: new Date() });
-                invitesCache = invitesCache.filter(invite => invite.email !== userEmail);
-            } else {
-                showGate('Access denied. Ask an existing admin to invite you.'); 
-                await auth.signOut().catch(() => {}); 
-                return; 
-            }
+if (auth) {
+    auth.onAuthStateChanged(async (user) => {
+        console.log('🔐 Auth state changed:', user ? `Signed in as ${user.email}` : 'Signed out');
+        currentUser = user;
+        if (!user) { 
+            showGate('Sign in to continue.'); 
+            return;
         }
         
-        showApp();
-        loadEvents();
-        
-    } catch (error) {
-        showGate('Error verifying admin access: ' + error.message);
-        await auth.signOut().catch(() => {});
-    }
-});
+        try {
+            console.log('🔍 Verifying admin access for:', user.email);
+            el('signinBtn').classList.add('d-none');
+            el('signoutBtn').classList.remove('d-none');
+            
+            // Optimized admin verification with single query approach
+            const userEmail = (user.email || '').toLowerCase();
+            
+            // Single query to get admin status
+            console.log('🔍 Checking admin document for UID:', user.uid);
+            const adminDoc = await db.collection('admins').doc(user.uid).get();
+            
+            if (!adminDoc.exists) {
+                console.log('❌ Admin document not found, checking invites...');
+                // Check for invite and auto-promote if found
+                const inviteDoc = await db.collection('invites').doc(userEmail).get();
+                if (inviteDoc.exists) {
+                    console.log('✅ Invite found, promoting to admin...');
+                    // Auto-promote from invite to admin
+                    await db.collection('admins').doc(user.uid).set({ 
+                        email: userEmail, 
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+                    }, { merge: true });
+                    await db.collection('invites').doc(userEmail).delete().catch(() => {});
+                    
+                    // Update caches
+                    adminsCache.push({ id: user.uid, email: userEmail, createdAt: new Date() });
+                    invitesCache = invitesCache.filter(invite => invite.email !== userEmail);
+                    console.log('✅ User promoted to admin successfully');
+                } else {
+                    console.log('❌ No invite found, access denied');
+                    showGate('Access denied. Ask an existing admin to invite you.'); 
+                    await auth.signOut().catch(() => {}); 
+                    return; 
+                }
+            } else {
+                console.log('✅ Admin access confirmed');
+            }
+            
+            console.log('🚀 Showing admin dashboard...');
+            showApp();
+            loadEvents();
+            
+        } catch (error) {
+            console.error('❌ Error verifying admin access:', error);
+            showGate('Error verifying admin access: ' + error.message);
+            await auth.signOut().catch(() => {});
+        }
+    });
+} else {
+    console.error('❌ Firebase auth not available');
+    showGate('Firebase authentication not available. Please refresh the page.');
+}
 
 // Tab switching functionality
 function switchTab(name) {
@@ -489,14 +536,28 @@ async function deleteEventCascade(eventId) {
     await batch.commit();
 }
 
-        function manageParticipants(eventId) {
-    db.collection('events').doc(eventId).get().then(doc => { 
-                selectedEvent = { id: doc.id, data: doc.data() };
+        async function manageParticipants(eventId) {
+    try {
+        const doc = await db.collection('events').doc(eventId).get();
+        selectedEvent = { id: doc.id, data: doc.data() };
         el('participantsEventName').innerText = selectedEvent.data.title || selectedEvent.data.slug || selectedEvent.id; 
-                renderParticipantsTableHead();
-                switchTab('participants');
-                loadParticipants();
-    }); 
+        
+        // Initialize optimized participants manager if available
+        if (typeof ParticipantsManager !== 'undefined') {
+            participantsManager = new ParticipantsManager();
+            await participantsManager.initialize(eventId);
+        } else {
+            console.warn('ParticipantsManager not available, using fallback');
+            participantsManager = null;
+        }
+        
+        renderParticipantsTableHead();
+        switchTab('participants');
+        await loadParticipants();
+    } catch (error) {
+        console.error('Error in manageParticipants:', error);
+        showAlert('Error loading event: ' + error.message, 'danger');
+    }
 }
 
 // Event Fields Management
@@ -595,45 +656,179 @@ window.addEventFieldRow = addEventFieldRow;
 window.removeEventField = removeEventField;
 window.normalizeEventFields = normalizeEventFields;
 
-// Participants Management
+// Load ALL participants for the selected event into local cache, then render
 async function loadParticipants() { 
     if (!selectedEvent) return; 
     
     const tbody = document.querySelector('#participantsTable tbody'); 
-            const extraFields = (selectedEvent?.data?.participantFields || []);
-    const totalColumns = 4 + extraFields.length; // Name, Email, Custom Fields, Certificate Status, Actions
-            tbody.innerHTML = `<tr><td colspan="${totalColumns}" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading participants...</div></td></tr>`;
-            
-            try {
-        const snap = await db.collection('events').doc(selectedEvent.id).collection('participants').orderBy('name').get(); 
-                participantsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const extraFields = (selectedEvent?.data?.participantFields || []);
+    const totalColumns = 4 + extraFields.length;
+    
+    tbody.innerHTML = `<tr><td colspan="${totalColumns}" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading participants...</div></td></tr>`;
+    
+    try {
+        // 1) Try hydrate from IndexedDB (fast path)
+        try {
+            const cached = await idbLoadParticipants(selectedEvent.id);
+            if (cached?.rows?.length) {
+                participantsCache = cached.rows.slice();
+                if (participantsManager) {
+                    participantsManager.participantsCache = new Map();
+                    cached.rows.forEach(p => participantsManager.participantsCache.set(p.id, p));
+                    participantsManager.hasMore = false;
+                }
+                window.__participantsLocalIndex = cached.rows.map(p => ({
+                    id: p.id,
+                    name: (p.name || '').toLowerCase(),
+                    email: (p.email || '').toLowerCase()
+                }));
                 renderParticipantsFromCache();
-                
-                // Update participant count display
+                el('participantsCount').innerText = cached.rows.length;
+                updateSortIcons();
+                showAlert(`Loaded ${cached.rows.length} participants (cached)`, 'info', 1500);
+            }
+        } catch (_) {}
+
+        // 2) Refresh in background from Firestore and update UI when done
+        const all = await fetchAllParticipantsLocal();
+        if (all.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="${totalColumns}" class="empty-state">
+                    <i class="fa-solid fa-users-slash"></i>
+                    <h6 class="mt-2">No participants found</h6>
+                    <p class="mb-0">Add participants to get started</p>
+                </td></tr>`;
+        } else {
+            renderParticipantsFromCache();
+        }
+        el('participantsCount').innerText = all.length;
+        updateSortIcons();
+        showAlert(`Loaded ${all.length} participants`, 'success', 2000);
+    } catch (error) {
+        console.error('Error loading participants:', error);
+        tbody.innerHTML = `
+            <tr><td colspan="${totalColumns}" class="empty-state">
+                <i class="fa-solid fa-exclamation-triangle text-danger"></i>
+                <h6 class="mt-2">Error loading participants</h6>
+                <p class="mb-0 text-danger">${error.message}</p>
+            </td></tr>`;
+    }
+}
+
+// Fetch all participants for the event in chunks and populate caches
+async function fetchAllParticipantsLocal() {
+    const all = [];
+    let lastDoc = null;
+    const chunk = 500;
+    while (true) {
+        let query = db.collection('events').doc(selectedEvent.id)
+            .collection('participants')
+            .orderBy('name')
+            .limit(chunk);
+        if (lastDoc) query = query.startAfter(lastDoc);
+        const snap = await query.get();
+        if (snap.empty) break;
+        snap.docs.forEach(d => all.push({ id: d.id, ...d.data() }));
+        lastDoc = snap.docs[snap.docs.length - 1];
+        if (snap.size < chunk) break;
+    }
+
+    // Fill both caches
+    participantsCache = all.slice();
+    if (participantsManager) {
+        participantsManager.participantsCache = new Map();
+        all.forEach(p => participantsManager.participantsCache.set(p.id, p));
+        participantsManager.hasMore = false;
+    }
+    // Build lightweight local search index
+    try {
+        window.__participantsLocalIndex = all.map(p => ({
+            id: p.id,
+            name: (p.name || '').toLowerCase(),
+            email: (p.email || '').toLowerCase()
+        }));
+    } catch (_) {}
+
+    // Persist to IndexedDB (best-effort)
+    try {
+        await idbSaveParticipants(selectedEvent.id, all);
+    } catch (e) {
+        console.warn('IndexedDB save failed:', e);
+    }
+    return all;
+}
+
+// IndexedDB helpers (tiny wrapper, no external deps)
+function idbOpen() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open('RSACertifyDB', 1);
+        req.onupgradeneeded = (ev) => {
+            const db = ev.target.result;
+            if (!db.objectStoreNames.contains('participants')) {
+                db.createObjectStore('participants', { keyPath: 'key' });
+            }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function idbSaveParticipants(eventId, rows) {
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('participants', 'readwrite');
+        const store = tx.objectStore('participants');
+        store.put({ key: eventId, rows, savedAt: Date.now() });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+async function idbLoadParticipants(eventId) {
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('participants', 'readonly');
+        const store = tx.objectStore('participants');
+        const req = store.get(eventId);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+// Fallback participants loading (original method)
+async function loadParticipantsFallback() {
+    if (!selectedEvent) return;
+    
+    const tbody = document.querySelector('#participantsTable tbody');
+    const extraFields = (selectedEvent?.data?.participantFields || []);
+    const totalColumns = 4 + extraFields.length;
+    
+    try {
+        const snap = await db.collection('events').doc(selectedEvent.id).collection('participants').orderBy('name').get();
+        participantsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderParticipantsFromCache();
+        
+        // Update participant count display
         el('participantsCount').innerText = snap.size;
         
-        // Calculate certificate count from already fetched data (no additional query needed)
+        // Calculate certificate count
         const certificatesCount = participantsCache.filter(p => p.certificateStatus === 'downloaded').length;
         
         await db.collection('events').doc(selectedEvent.id).set({
-                    participantsCount: snap.size,
-                    certificatesCount: certificatesCount
-                }, { merge: true });
-                
-        // Restore sort state after loading participants
-        updateSortIcons();
-                
-            } catch (error) {
-                const extraFields = (selectedEvent?.data?.participantFields || []);
-                const totalColumns = 4 + extraFields.length;
-                tbody.innerHTML = `
-                    <tr><td colspan="${totalColumns}" class="empty-state">
-                        <i class="fa-solid fa-exclamation-triangle text-danger"></i>
-                        <h6 class="mt-2">Error loading participants</h6>
-                        <p class="mb-0 text-danger">${error.message}</p>
-                    </td></tr>`;
-            }
-        }
+            participantsCount: snap.size,
+            certificatesCount: certificatesCount
+        }, { merge: true });
+        
+    } catch (error) {
+        console.error('Fallback loading error:', error);
+        tbody.innerHTML = `
+            <tr><td colspan="${totalColumns}" class="empty-state">
+                <i class="fa-solid fa-exclamation-triangle text-danger"></i>
+                <h6 class="mt-2">Error loading participants</h6>
+                <p class="mb-0 text-danger">${error.message}</p>
+            </td></tr>`;
+    }
+}
 
 const participantModal = new bootstrap.Modal(document.getElementById('participantModal'));
 function openParticipantModal(id) {
@@ -694,29 +889,32 @@ function openParticipantModal(id) {
 }
 
 async function saveParticipant() {
-    const eventId = el('participantEventId').value;
+    if (!selectedEvent) return showAlert('No event selected', 'warning');
+    
     const id = el('participantId').value || undefined;
     const email = el('participantEmail').value.trim().toLowerCase();
     
     const payload = {
         name: el('participantName').value.trim(),
         email: email,
-        certificateStatus: 'pending', // Always set certificate status
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp() 
+        certificateStatus: 'pending',
+        id: id
     };
     
     if (!payload.name || !payload.email) return showAlert('Name and email are required', 'warning'); 
     
-    // Check for duplicate email using local cache (only for new participants)
+    // Check for duplicate email
     if (!id) {
-        const existing = participantsCache.find(p => p.email.toLowerCase() === email);
+        const existing = participantsManager ? 
+            participantsManager.getCachedParticipants().find(p => p.email.toLowerCase() === email) :
+            (participantsCache || []).find(p => p.email.toLowerCase() === email);
         if (existing) {
             showAlert('A participant with this email already exists in this event.', 'warning');
             return;
         }
     }
     
-    // collect extras
+    // Collect custom fields
     const additionalFields = {};
     const missingFields = [];
     (selectedEvent.data.participantFields || []).forEach(f => {
@@ -730,6 +928,36 @@ async function saveParticipant() {
     
     if (missingFields.length > 0) return showAlert(`Please fill in all required fields: ${missingFields.join(', ')}`, 'warning'); 
     payload.additionalFields = additionalFields;
+    
+    try {
+        if (participantsManager) {
+            // Use optimized manager to save participant
+            const participant = await participantsManager.saveParticipant(payload, !!id);
+            
+            participantModal.hide(); 
+            
+            // Update UI - real-time listener will handle this automatically
+            renderParticipantsFromCache();
+            
+            // Update participant count display
+            const totalCount = participantsManager.getCachedParticipants().length;
+            el('participantsCount').innerText = totalCount;
+            
+            showAlert('Participant saved successfully!', 'success');
+        } else {
+            // Fallback to original method
+            await saveParticipantFallback(payload, id);
+        }
+        
+    } catch (e) {
+        console.error('Error saving participant:', e);
+        showAlert('Failed: ' + e.message, 'danger');
+    }
+}
+
+// Fallback save participant method
+async function saveParticipantFallback(payload, id) {
+    const eventId = selectedEvent.id;
     
     try {
         if (id) {
@@ -758,15 +986,10 @@ async function saveParticipant() {
         // Update participant count display
         el('participantsCount').innerText = participantsCache.length;
         
-        // Update event document counts
-        const certificatesCount = participantsCache.filter(p => p.certificateStatus === 'downloaded').length;
-        await db.collection('events').doc(eventId).set({
-            participantsCount: participantsCache.length,
-            certificatesCount: certificatesCount
-        }, { merge: true });
+        showAlert('Participant saved successfully!', 'success');
         
     } catch (e) {
-        showAlert('Failed: ' + e.message, 'danger');
+        throw e;
     }
 }
 
@@ -808,7 +1031,11 @@ function renderParticipantsFromCache() {
     if (!tbody) return;
     
     const { q, status } = getParticipantsFilters();
-    let data = participantsCache.slice();
+    // Prefer manager cache when available
+    const baseData = participantsManager
+        ? (participantsManager.getCachedParticipants() || [])
+        : (participantsCache || []);
+    let data = baseData.slice();
     
     // Apply filters
     if (q) {
@@ -821,11 +1048,44 @@ function renderParticipantsFromCache() {
         data = data.filter(p => (p.certificateStatus || '') === status);
     }
     
-    // Apply sorting
+    // Apply sorting (supports custom fields under additionalFields)
+    const resolveSortValue = (row, key) => {
+        if (row == null) return '';
+        const direct = row[key];
+        if (direct !== undefined && direct !== null) return direct;
+        const nested = (row.additionalFields || {})[key];
+        return nested !== undefined && nested !== null ? nested : '';
+    };
+
     data.sort((a, b) => {
-        const av = (a[participantsSortKey] || '').toString().toLowerCase();
-        const bv = (b[participantsSortKey] || '').toString().toLowerCase();
-        return participantsSortDir === 'asc' ? (av < bv ? -1 : 1) : (av > bv ? 1 : -1);
+        const avRaw = resolveSortValue(a, participantsSortKey);
+        const bvRaw = resolveSortValue(b, participantsSortKey);
+
+        // Try numeric compare when both are numbers
+        const aNum = typeof avRaw === 'number' ? avRaw : Number.NaN;
+        const bNum = typeof bvRaw === 'number' ? bvRaw : Number.NaN;
+        if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
+            return participantsSortDir === 'asc' ? aNum - bNum : bNum - aNum;
+        }
+
+        // Handle Firestore Timestamps/dates
+        const toMillis = (v) => {
+            if (!v) return null;
+            if (typeof v?.toDate === 'function') return v.toDate().getTime();
+            if (v instanceof Date) return v.getTime();
+            return null;
+        };
+        const aMs = toMillis(avRaw);
+        const bMs = toMillis(bvRaw);
+        if (aMs !== null && bMs !== null) {
+            return participantsSortDir === 'asc' ? aMs - bMs : bMs - aMs;
+        }
+
+        // Default string compare (case-insensitive)
+        const av = (avRaw ?? '').toString().toLowerCase();
+        const bv = (bvRaw ?? '').toString().toLowerCase();
+        if (av === bv) return 0;
+        return participantsSortDir === 'asc' ? (av < bv ? -1 : 1) : (av > bv ? -1 : 1);
     });
     
     const extraFields = (selectedEvent?.data?.participantFields || []);
@@ -996,6 +1256,11 @@ window.renderParticipantsFromCache = renderParticipantsFromCache;
 window.setParticipantsSort = setParticipantsSort;
 window.renderParticipantsTableHead = renderParticipantsTableHead;
 window.refreshParticipantStatus = refreshParticipantStatus;
+window.updateSortIcons = updateSortIcons;
+window.getParticipantsFilters = getParticipantsFilters;
+window.exportParticipantsCsvLocal = exportParticipantsCsvLocal;
+window.toggleLiveUpdates = toggleLiveUpdates;
+window.applyQuickStatus = applyQuickStatus;
 
 // Bulk Upload Functionality
 const bulkUploadModal = new bootstrap.Modal(document.getElementById('bulkUploadModal'));
@@ -1306,6 +1571,382 @@ window.openBulkUploadModal = openBulkUploadModal;
 window.uploadBulkParticipants = uploadBulkParticipants;
 window.exportParticipantsCsv = exportParticipantsCsv;
 window.downloadCsvTemplate = downloadCsvTemplate;
+
+// New optimized functions
+function setupInfiniteScroll() {
+    const tbody = document.querySelector('#participantsTable tbody');
+    if (!tbody || !participantsManager) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && participantsManager.hasMore) {
+                loadMoreParticipants();
+            }
+        });
+    });
+
+    // Observe the last row
+    const lastRow = tbody.lastElementChild;
+    if (lastRow) {
+        observer.observe(lastRow);
+    }
+}
+
+async function loadMoreParticipants() {
+    if (!participantsManager || !participantsManager.hasMore) return;
+
+    try {
+        const newParticipants = await participantsManager.loadParticipantsPage();
+        if (newParticipants.length > 0) {
+            renderParticipantsFromCache();
+        }
+    } catch (error) {
+        console.error('Error loading more participants:', error);
+    }
+}
+
+// Enhanced search with debouncing
+let searchTimeout;
+function setupSearchWithDebounce() {
+    try {
+        const searchInput = document.getElementById('participantsSearch');
+        if (!searchInput) {
+            console.log('Search input not found, skipping debounce setup');
+            return;
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                performSearch(e.target.value);
+            }, 300);
+        });
+    } catch (error) {
+        console.error('Error setting up search debounce:', error);
+    }
+}
+
+async function performSearch(query) {
+    try {
+        const q = (query || '').toLowerCase();
+        if (q.length < 2) {
+            renderParticipantsFromCache();
+            return;
+        }
+
+        // 1) Local index first (instant)
+        const idx = window.__participantsLocalIndex || [];
+        let localIds = [];
+        if (idx.length > 0) {
+            localIds = idx
+                .filter(r => r.name.includes(q) || r.email.includes(q))
+                .slice(0, 200) // cap for UI
+                .map(r => r.id);
+        }
+        if (localIds.length > 0) {
+            const base = participantsManager
+                ? (participantsManager.getCachedParticipants() || [])
+                : (participantsCache || []);
+            const localResults = base.filter(p => localIds.includes(p.id));
+            renderSearchResults(localResults);
+            return;
+        }
+
+        // 2) Server fallback for global search
+        if (participantsManager) {
+            const results = await participantsManager.searchParticipants(q);
+            const tbody = document.querySelector('#participantsTable tbody');
+            if (!tbody) return;
+            if (results.length === 0) {
+                const extraFields = (selectedEvent?.data?.participantFields || []);
+                const totalColumns = 4 + extraFields.length;
+                tbody.innerHTML = `
+                    <tr><td colspan="${totalColumns}" class="empty-state">
+                        <i class="fa-solid fa-search"></i>
+                        <h6 class="mt-2">No participants found</h6>
+                        <p class="mb-0">Try adjusting your search terms</p>
+                    </td></tr>`;
+            } else {
+                renderSearchResults(results);
+            }
+            return;
+        }
+
+        // Fallback simple local scan
+        const filtered = (participantsCache || []).filter(p => 
+            (p.name || '').toLowerCase().includes(q) || 
+            (p.email || '').toLowerCase().includes(q)
+        );
+        renderSearchResults(filtered);
+    } catch (error) {
+        console.error('Search error:', error);
+        renderParticipantsFromCache();
+    }
+}
+
+function renderSearchResults(participants) {
+    const tbody = document.querySelector('#participantsTable tbody');
+    if (!tbody) return;
+
+    const extraFields = (selectedEvent?.data?.participantFields || []);
+    
+    tbody.innerHTML = participants.map(participant => {
+        const customFieldsHtml = extraFields.map(f => {
+            const value = participant.additionalFields?.[f.key] || '';
+            return `<td><span class="custom-field-badge ${!value ? 'empty' : ''}">${value || 'N/A'}</span></td>`;
+        }).join('');
+
+        return `
+            <tr data-participant-id="${participant.id}">
+                <td><strong>${participant.name || 'N/A'}</strong></td>
+                <td>${participant.email || 'N/A'}</td>
+                ${customFieldsHtml}
+                <td>
+                    <span class="status-badge ${participant.certificateStatus === 'downloaded' ? 'success' : 'pending'}">
+                        <i class="fa-solid fa-${participant.certificateStatus === 'downloaded' ? 'check-circle' : 'clock'}"></i>
+                        ${participant.certificateStatus === 'downloaded' ? 'Downloaded' : 'Pending'}
+                    </span>
+                </td>
+                <td class="text-end">
+                    <div class="action-buttons">
+                        <button class="btn btn-sm btn-outline-primary" onclick="openParticipantModal('${participant.id}')" title="Edit">
+                            <i class="fa-solid fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteParticipant('${participant.id}', '${participant.name}')" title="Delete">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Enhanced export with progress
+async function exportParticipantsCsvOptimized() {
+    if (!selectedEvent || !participantsManager) return showAlert('Select an event first', 'warning');
+    
+    try {
+        showAlert('Preparing export...', 'info', 2000);
+        
+        const csvData = await participantsManager.exportToCsv({
+            includeCustomFields: true,
+            compression: true
+        });
+        
+        // Create and download file
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `participants-${selectedEvent.id}-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showAlert('Export completed successfully!', 'success');
+        
+    } catch (error) {
+        showAlert('Export failed: ' + error.message, 'danger');
+    }
+}
+
+// Local CSV export (from fully loaded cache, zero reads)
+async function exportParticipantsCsvLocal() {
+    try {
+        const base = participantsManager
+            ? (participantsManager.getCachedParticipants() || [])
+            : (participantsCache || []);
+
+        const extraFields = (selectedEvent?.data?.participantFields || []);
+        const customKeys = extraFields.map(f => f.key);
+
+        const headers = ['name', 'email', ...customKeys, 'certificateStatus', 'createdAt', 'downloadedAt'];
+        const rows = [headers.join(',')];
+
+        const toIso = (v) => v?.toDate?.()?.toISOString?.() || (v instanceof Date ? v.toISOString() : '');
+
+        base.forEach(p => {
+            const line = headers.map(h => {
+                let val = '';
+                if (h === 'name') val = p.name || '';
+                else if (h === 'email') val = p.email || '';
+                else if (h === 'certificateStatus') val = p.certificateStatus || 'pending';
+                else if (h === 'createdAt') val = toIso(p.createdAt);
+                else if (h === 'downloadedAt') val = toIso(p.downloadedAt);
+                else val = (p.additionalFields || {})[h] || '';
+                if (typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))) {
+                    val = '"' + val.replace(/"/g, '""') + '"';
+                }
+                return val;
+            });
+            rows.push(line.join(','));
+        });
+
+        const csv = rows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `participants-${selectedEvent.id}-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showAlert(`Exported ${base.length} rows from local cache`, 'success');
+    } catch (e) {
+        showAlert('Local export failed: ' + e.message, 'danger');
+    }
+}
+
+// Live updates toggle: attach/detach a per-collection listener
+let __liveUnsub = null;
+async function toggleLiveUpdates(enable) {
+    try {
+        if (__liveUnsub) { __liveUnsub(); __liveUnsub = null; }
+        if (!enable) return showAlert('Live updates off', 'info', 1500);
+        if (!selectedEvent) return;
+        const col = db.collection('events').doc(selectedEvent.id).collection('participants');
+        __liveUnsub = col.onSnapshot((snap) => {
+            let changed = false;
+            snap.docChanges().forEach(ch => {
+                const p = { id: ch.doc.id, ...ch.doc.data() };
+                if (ch.type === 'removed') {
+                    participantsCache = (participantsCache || []).filter(x => x.id !== p.id);
+                } else {
+                    const idx = (participantsCache || []).findIndex(x => x.id === p.id);
+                    if (idx === -1) participantsCache.push(p); else participantsCache[idx] = p;
+                }
+                changed = true;
+            });
+            if (changed) {
+                // Update local index quickly
+                window.__participantsLocalIndex = (participantsCache || []).map(r => ({
+                    id: r.id,
+                    name: (r.name || '').toLowerCase(),
+                    email: (r.email || '').toLowerCase()
+                }));
+                renderParticipantsFromCache();
+                el('participantsCount').innerText = participantsCache.length;
+            }
+        });
+        showAlert('Live updates on', 'success', 1500);
+    } catch (e) {
+        showAlert('Live updates failed: ' + e.message, 'danger');
+    }
+}
+
+// Quick status filter helper
+function applyQuickStatus(status) {
+    const sel = el('participantsStatusFilter');
+    if (!sel) return;
+    sel.value = status || '';
+    renderParticipantsFromCache();
+}
+
+// Enhanced bulk upload with progress tracking
+async function uploadBulkParticipantsOptimized() {
+    if (!bulkRows.length || !participantsManager) return;
+    
+    try {
+        // Show progress section
+        document.getElementById('bulkPreview').classList.add('d-none');
+        document.getElementById('bulkProgress').classList.remove('d-none');
+        document.getElementById('bulkImportBtn').disabled = true;
+        document.getElementById('bulkCloseBtn').disabled = true;
+        
+        // Initialize progress tracking
+        const progressBar = document.getElementById('progressBar');
+        const progressPercentage = document.getElementById('progressPercentage');
+        const processedCount = document.getElementById('processedCount');
+        const successCount = document.getElementById('successCount');
+        const totalCount = document.getElementById('totalCount');
+        
+        totalCount.textContent = bulkRows.length;
+        
+        // Prepare participants data
+        const participants = bulkRows.map(row => ({
+            name: row.name,
+            email: row.email,
+            certificateStatus: 'pending',
+            additionalFields: Object.fromEntries(
+                Object.entries(row).filter(([key]) => !['name', 'email', '_dupCSV', '_exists'].includes(key))
+            )
+        }));
+        
+        // Use optimized bulk upload manager with progress callback
+        const result = await participantsManager.bulkUpload(participants, (progress) => {
+            // Update progress UI
+            const percentage = Math.round(progress.percentage);
+            progressBar.style.width = percentage + '%';
+            progressPercentage.textContent = percentage + '%';
+            processedCount.textContent = progress.processed;
+            successCount.textContent = progress.processed; // Assuming all processed are successful for now
+        });
+        
+        // Complete progress
+        progressBar.style.width = '100%';
+        progressPercentage.textContent = '100%';
+        processedCount.textContent = result.processed;
+        successCount.textContent = result.processed;
+        
+        showAlert(`Successfully imported ${result.processed} participants!`, 'success');
+        
+        // Close modal and reset after a short delay
+        setTimeout(() => {
+            bulkUploadModal.hide();
+            resetBulkUploadModal();
+        }, 2000);
+        
+    } catch (error) {
+        showAlert('Bulk import failed: ' + error.message, 'danger');
+        resetBulkUploadModal();
+    }
+}
+
+function resetBulkUploadModal() {
+    bulkRows = [];
+    existingByEmail = {};
+    document.getElementById('bulkCsvInput').value = '';
+    document.getElementById('bulkPreview').classList.add('d-none');
+    document.getElementById('bulkProgress').classList.add('d-none');
+    document.getElementById('bulkImportBtn').disabled = true;
+    document.getElementById('bulkCloseBtn').disabled = false;
+    document.getElementById('bulkImportBtn').innerHTML = '<i class="fa-solid fa-upload me-1"></i>Import Participants';
+    
+    // Reset progress
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('progressPercentage').textContent = '0%';
+    document.getElementById('processedCount').textContent = '0';
+    document.getElementById('successCount').textContent = '0';
+    document.getElementById('totalCount').textContent = '0';
+}
+
+// Initialize optimized features when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        setupSearchWithDebounce();
+    } catch (error) {
+        console.error('Error setting up search debounce:', error);
+    }
+});
+
+// Make functions globally available
+window.signIn = signIn;
+window.signOut = signOut;
+window.showApp = showApp;
+window.showGate = showGate;
+
+// Ensure gate screen is shown initially
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔍 DOM loaded, checking initial state...');
+    const gateScreen = document.getElementById('gateScreen');
+    const appContainer = document.getElementById('appContainer');
+    
+    if (gateScreen && appContainer) {
+        // Show gate screen initially
+        gateScreen.style.display = 'block';
+        appContainer.style.display = 'none';
+        console.log('✅ Gate screen shown initially');
+    }
+});
 
 // Admin Management
 async function loadAdmins() {
