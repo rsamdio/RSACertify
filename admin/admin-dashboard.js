@@ -6,15 +6,16 @@ const firebaseConfig = {
     storageBucket: "rsacertify.firebasestorage.app",
     messagingSenderId: "623867096357",
     appId: "1:623867096357:web:8af2600adc0145b14dfecc",
-    measurementId: "G-RTT3BLGHYN"
+    measurementId: "G-RTT3BLGHYN",
+    databaseURL: "https://rsacertify-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 // Initialize Firebase
-let auth, db;
+let auth, db, realtimeDb;
 try {
     // Check if Firebase is already initialized
     if (firebase.apps.length === 0) {
-        firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
         console.log('✅ Firebase initialized successfully');
     } else {
         console.log('✅ Firebase already initialized');
@@ -22,13 +23,14 @@ try {
     
     auth = firebase.auth();
     db = firebase.firestore();
+    realtimeDb = firebase.database();
     
     // Configure Firestore settings
     db.settings({
         cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
     });
     
-    console.log('✅ Firebase auth and firestore ready');
+    console.log('✅ Firebase auth, firestore, and realtime database ready');
 } catch (error) {
     console.error('❌ Firebase initialization failed:', error);
     throw error;
@@ -47,6 +49,7 @@ let invitesCache = [];
 let bulkRows = [];
 let existingByEmail = {};
 let adminsLoaded = false;
+let realtimeCounterListeners = {}; // Track Realtime Database listeners
 
 // Utility functions
 function el(id) { return document.getElementById(id); }
@@ -107,20 +110,20 @@ function showAlert(message, type = 'info', duration = 5000) {
 }
 
 // Authentication functions
-        async function signIn() {
-            try {
-                if (!auth) {
-                    showAlert('Firebase authentication not available. Please refresh the page.', 'danger');
-                    return;
-                }
-                
+async function signIn() {
+    try {
+        if (!auth) {
+            showAlert('Firebase authentication not available. Please refresh the page.', 'danger');
+            return;
+        }
+        
         const provider = new firebase.auth.GoogleAuthProvider();
-                provider.addScope('email');
-                
+        provider.addScope('email');
+        
         try {
             showAlert('Opening Google sign-in popup...', 'info', 2000);
             await auth.signInWithPopup(provider);
-                } catch (popupError) {
+        } catch (popupError) {
             console.error('Sign-in popup error:', popupError);
             if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
                 showAlert('Popup blocked. Redirecting to Google sign-in...', 'warning', 3000);
@@ -129,10 +132,13 @@ function showAlert(message, type = 'info', duration = 5000) {
             }
             await auth.signInWithRedirect(provider);
         }
-            } catch (error) {
-                showAlert('Authentication failed: ' + error.message, 'danger');
+    } catch (error) {
+        showAlert('Authentication failed: ' + error.message, 'danger');
     }
 }
+
+// Expose signIn immediately for inline onclick handlers
+window.signIn = signIn;
 
 function signOut() { 
     if (auth) {
@@ -142,65 +148,68 @@ function signOut() {
     }
 }
 
+// Expose signOut immediately for inline onclick handlers
+window.signOut = signOut;
+
 // Setup authentication
 if (auth) {
-    auth.onAuthStateChanged(async (user) => {
+auth.onAuthStateChanged(async (user) => {
         console.log('🔐 Auth state changed:', user ? `Signed in as ${user.email}` : 'Signed out');
-        currentUser = user;
-        if (!user) { 
-            showGate('Sign in to continue.'); 
-            return;
-        }
-        
-        try {
+    currentUser = user;
+    if (!user) { 
+        showGate('Sign in to continue.'); 
+        return;
+    }
+    
+    try {
             console.log('🔍 Verifying admin access for:', user.email);
-            el('signinBtn').classList.add('d-none');
-            el('signoutBtn').classList.remove('d-none');
-            
-            // Optimized admin verification with single query approach
-            const userEmail = (user.email || '').toLowerCase();
-            
-            // Single query to get admin status
+        el('signinBtn').classList.add('d-none');
+        el('signoutBtn').classList.remove('d-none');
+        
+        // Optimized admin verification with single query approach
+        const userEmail = (user.email || '').toLowerCase();
+        
+        // Single query to get admin status
             console.log('🔍 Checking admin document for UID:', user.uid);
-            const adminDoc = await db.collection('admins').doc(user.uid).get();
-            
-            if (!adminDoc.exists) {
+        const adminDoc = await db.collection('admins').doc(user.uid).get();
+        
+        if (!adminDoc.exists) {
                 console.log('❌ Admin document not found, checking invites...');
-                // Check for invite and auto-promote if found
-                const inviteDoc = await db.collection('invites').doc(userEmail).get();
-                if (inviteDoc.exists) {
+            // Check for invite and auto-promote if found
+            const inviteDoc = await db.collection('invites').doc(userEmail).get();
+            if (inviteDoc.exists) {
                     console.log('✅ Invite found, promoting to admin...');
-                    // Auto-promote from invite to admin
-                    await db.collection('admins').doc(user.uid).set({ 
-                        email: userEmail, 
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp() 
-                    }, { merge: true });
-                    await db.collection('invites').doc(userEmail).delete().catch(() => {});
-                    
-                    // Update caches
-                    adminsCache.push({ id: user.uid, email: userEmail, createdAt: new Date() });
-                    invitesCache = invitesCache.filter(invite => invite.email !== userEmail);
+                // Auto-promote from invite to admin
+                await db.collection('admins').doc(user.uid).set({ 
+                    email: userEmail, 
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+                }, { merge: true });
+                await db.collection('invites').doc(userEmail).delete().catch(() => {});
+                
+                // Update caches
+                adminsCache.push({ id: user.uid, email: userEmail, createdAt: new Date() });
+                invitesCache = invitesCache.filter(invite => invite.email !== userEmail);
                     console.log('✅ User promoted to admin successfully');
-                } else {
+            } else {
                     console.log('❌ No invite found, access denied');
-                    showGate('Access denied. Ask an existing admin to invite you.'); 
-                    await auth.signOut().catch(() => {}); 
-                    return; 
-                }
+                showGate('Access denied. Ask an existing admin to invite you.'); 
+                await auth.signOut().catch(() => {}); 
+                return; 
+            }
             } else {
                 console.log('✅ Admin access confirmed');
-            }
-            
-            console.log('🚀 Showing admin dashboard...');
-            showApp();
-            loadEvents();
-            
-        } catch (error) {
-            console.error('❌ Error verifying admin access:', error);
-            showGate('Error verifying admin access: ' + error.message);
-            await auth.signOut().catch(() => {});
         }
-    });
+        
+            console.log('🚀 Showing admin dashboard...');
+        showApp();
+        loadEvents();
+        
+    } catch (error) {
+            console.error('❌ Error verifying admin access:', error);
+        showGate('Error verifying admin access: ' + error.message);
+        await auth.signOut().catch(() => {});
+    }
+});
 } else {
     console.error('❌ Firebase auth not available');
     showGate('Firebase authentication not available. Please refresh the page.');
@@ -260,10 +269,10 @@ async function refreshCertificateCount(eventId) {
         const originalText = targetBadge.textContent;
         targetBadge.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         
-        // Query for updated certificate count (optimized - single query)
-        console.log('Querying certificate count...');
-        const participantsSnap = await db.collection('events').doc(eventId).collection('participants').get();
-        const certificatesCount = participantsSnap.docs.filter(doc => doc.data().certificateStatus === 'downloaded').length;
+        // Read certificate count from event document (maintained by Cloud Functions)
+        console.log('Reading certificate count from event document...');
+        const eventDoc = await db.collection('events').doc(eventId).get();
+        const certificatesCount = eventDoc.data()?.certificatesCount || 0;
         
         console.log('Certificate count result:', certificatesCount);
         
@@ -294,30 +303,89 @@ async function loadEvents() {
     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading events...</div></td></tr>';
     
     try {
+        let eventsData = [];
+        let useRealtimeDB = false;
+        
+        // Try to load from Realtime DB first (free reads)
+        if (realtimeDb) {
+            try {
+                const eventsRef = realtimeDb.ref('events');
+                const snapshot = await eventsRef.once('value');
+                const eventsObj = snapshot.val();
+                
+                if (eventsObj) {
+                    // Convert Realtime DB structure to array
+                    // Filter out events that don't have valid meta (deleted events)
+                    eventsData = Object.keys(eventsObj)
+                        .filter(eventId => {
+                            const meta = eventsObj[eventId]?.meta;
+                            // Only include events that have valid meta data
+                            return meta && (meta.title || meta.date || meta.participantsCount !== undefined);
+                        })
+                        .map(eventId => {
+                            const meta = eventsObj[eventId].meta || {};
+                            return {
+                                id: eventId,
+                                title: meta.title || '',
+                                date: meta.date || '',
+                                participantsCount: meta.participantsCount || 0,
+                                certificatesCount: meta.certificatesCount || 0,
+                                updatedAt: meta.updatedAt ? { seconds: Math.floor(meta.updatedAt / 1000) } : null,
+                                createdAt: meta.createdAt ? { seconds: Math.floor(meta.createdAt / 1000) } : null
+                            };
+                        });
+                    useRealtimeDB = true;
+                    console.log('✅ Loaded events from Realtime Database');
+                }
+            } catch (rtdbError) {
+                console.warn('⚠️ Failed to load from Realtime DB, falling back to Firestore:', rtdbError);
+            }
+        }
+        
+        // Always load from Firestore to ensure we have all events (including newly created ones)
+        // Merge with Realtime DB data for performance (use Realtime DB for counters if available)
         const snap = await db.collection('events').get();
-        const docs = [...snap.docs].sort((a,b) => {
-            const ea = a.data() || {};
-            const eb = b.data() || {};
-            const ta = (ea.updatedAt?.seconds || ea.createdAt?.seconds || 0);
-            const tb = (eb.updatedAt?.seconds || eb.createdAt?.seconds || 0);
+        const firestoreEvents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        if (useRealtimeDB && eventsData.length > 0) {
+            // Merge: Use Firestore as source of truth, but prefer Realtime DB counters if available
+            const rtdbMap = new Map(eventsData.map(e => [e.id, e]));
+            eventsData = firestoreEvents.map(fsEvent => {
+                const rtdbEvent = rtdbMap.get(fsEvent.id);
+                if (rtdbEvent) {
+                    // Use Realtime DB counters if available (more up-to-date)
+                    return {
+                        ...fsEvent,
+                        participantsCount: rtdbEvent.participantsCount ?? fsEvent.participantsCount ?? 0,
+                        certificatesCount: rtdbEvent.certificatesCount ?? fsEvent.certificatesCount ?? 0
+                    };
+                }
+                return fsEvent;
+            });
+            console.log('✅ Merged events from Firestore and Realtime Database');
+        } else {
+            // Fallback: Use Firestore only
+            eventsData = firestoreEvents;
+            console.log('✅ Loaded events from Firestore');
+        }
+        
+        // Sort by updatedAt/createdAt
+        eventsData.sort((a, b) => {
+            const ta = (a.updatedAt?.seconds || a.createdAt?.seconds || 0);
+            const tb = (b.updatedAt?.seconds || b.createdAt?.seconds || 0);
             return tb - ta;
         });
         
         // Cache events data
-        eventsCache = docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        eventsCache = eventsData;
         
         const rows = [];
         
         // Process each event using cached participant count and real-time certificate count
-        for (const doc of docs) {
-            const e = doc.data();
-            
-            // Use cached participant count from event document (cost efficient)
+        for (const e of eventsData) {
+            // Use cached counts from event document (cost efficient - maintained by Cloud Functions)
             const participantsCount = e.participantsCount || 0;
-            
-            // Get real-time certificate count with targeted query (read-only for display)
-            const certificatesSnap = await db.collection('events').doc(doc.id).collection('participants').where('certificateStatus', '==', 'downloaded').get();
-            const certificatesCount = certificatesSnap.size;
+            const certificatesCount = e.certificatesCount || 0;
             
             rows.push(`<tr>
                 <td>
@@ -326,22 +394,19 @@ async function loadEvents() {
                         <i class="fa-solid fa-calendar me-1"></i>${e.date || 'No date set'}
                     </div>
                     <div class="text-muted small">
-                        <i class="fa-solid fa-hashtag me-1"></i>${doc.id}
+                        <i class="fa-solid fa-hashtag me-1"></i>${e.id}
                     </div>
                 </td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <span class="badge bg-primary fs-6">${participantsCount}</span>
+                                <span class="badge bg-primary fs-6" id="participantsCountBadge-${e.id}">${participantsCount}</span>
                                 <span class="text-muted small">participants</span>
                             </div>
                 </td>
                 <td>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-success fs-6">${certificatesCount}</span>
+                        <span class="badge bg-success fs-6" id="certificatesCountBadge-${e.id}">${certificatesCount}</span>
                         <span class="text-muted small">issued</span>
-                        <button class="btn btn-sm btn-outline-secondary p-1 ms-1" onclick="refreshCertificateCount('${doc.id}')" title="Refresh certificate count">
-                            <i class="fas fa-sync-alt" style="font-size: 0.75rem;"></i>
-                        </button>
                     </div>
                 </td>
                 <td>
@@ -354,13 +419,13 @@ async function loadEvents() {
                 </td>
                 <td class="text-end">
                     <div class="action-buttons">
-                        <button class="btn btn-sm btn-outline-primary" onclick="openEventModal('${doc.id}')" title="Edit Event">
+                        <button class="btn btn-sm btn-outline-primary" onclick="openEventModal('${e.id}')" title="Edit Event">
                             <i class="fa-regular fa-pen-to-square"></i>
                         </button>
-                        <button class="btn btn-sm btn-primary" onclick="manageParticipants('${doc.id}')" title="Manage Participants">
+                        <button class="btn btn-sm btn-primary" onclick="manageParticipants('${e.id}')" title="Manage Participants">
                             <i class="fa-solid fa-users"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteEvent('${doc.id}','${(e.title || '').replace(/\"/g,'\\\"')}')" title="Delete Event">
+                        <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteEvent('${e.id}','${(e.title || '').replace(/\"/g,'\\\"')}')" title="Delete Event">
                             <i class="fa-regular fa-trash-can"></i>
                         </button>
                     </div>
@@ -380,7 +445,10 @@ async function loadEvents() {
         }
         
         // Update stats
-        if (el('totalEvents')) { el('totalEvents').innerText = docs.length; }
+        if (el('totalEvents')) { el('totalEvents').innerText = eventsData.length; }
+        
+        // Setup real-time counter listeners for all events
+        setupRealtimeCountersForAllEvents(eventsData);
         
     } catch (error) {
         tbody.innerHTML = `
@@ -389,6 +457,77 @@ async function loadEvents() {
                 <h6 class="mt-2">Error loading events</h6>
                 <p class="mb-0 text-danger">${error.message}</p>
             </td></tr>`;
+    }
+}
+
+/**
+ * Setup Realtime Database listeners for event counters
+ */
+function setupRealtimeCountersForAllEvents(events) {
+    if (!realtimeDb) {
+        console.warn('Realtime Database not initialized, skipping counter listeners');
+        return;
+    }
+    
+    // Clean up existing listeners
+    Object.values(realtimeCounterListeners).forEach(off => off());
+    realtimeCounterListeners = {};
+    
+    // Setup listeners for each event
+    events.forEach(event => {
+        const eventId = event.id || event.doc?.id;
+        if (!eventId) return;
+        
+        const countersRef = realtimeDb.ref(`events/${eventId}/counters`);
+        
+        const listener = countersRef.on('value', (snapshot) => {
+            const counters = snapshot.val();
+            if (counters) {
+                updateEventCountersInUI(eventId, counters);
+            }
+        });
+        
+        realtimeCounterListeners[eventId] = () => countersRef.off('value', listener);
+    });
+    
+    console.log(`Setup real-time counter listeners for ${events.length} events`);
+}
+
+/**
+ * Update event counters in the UI when Realtime Database updates
+ */
+function updateEventCountersInUI(eventId, counters) {
+    const tbody = document.querySelector('#eventsTable tbody');
+    if (!tbody) return;
+    
+    let row = tbody.querySelector(`tr[data-event-id="${eventId}"]`);
+    if (!row) {
+        // Try to find by button onclick attribute
+        const buttons = tbody.querySelectorAll(`button[onclick*="'${eventId}'"]`);
+        if (buttons.length > 0) {
+            row = buttons[0].closest('tr');
+        }
+    }
+    
+    if (row) {
+        // Update participants count badge
+        const participantsBadge = row.querySelector('.badge.bg-primary');
+        if (participantsBadge && counters.participants !== undefined) {
+            participantsBadge.textContent = counters.participants;
+        }
+        
+        // Update certificates count badge
+        const certificatesBadge = row.querySelector('.badge.bg-success');
+        if (certificatesBadge && counters.certificates !== undefined) {
+            certificatesBadge.textContent = counters.certificates;
+        }
+        
+        // Update cache
+        const eventIndex = eventsCache.findIndex(e => e.id === eventId);
+        if (eventIndex !== -1) {
+            eventsCache[eventIndex].participantsCount = counters.participants || 0;
+            eventsCache[eventIndex].certificatesCount = counters.certificates || 0;
+        }
     }
 }
 
@@ -412,17 +551,14 @@ function renderEventsFromCache() {
             </td>
             <td>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-primary fs-6">${participantsCount}</span>
+                    <span class="badge bg-primary fs-6" id="participantsCountBadge-${e.id}">${participantsCount}</span>
                     <span class="text-muted small">participants</span>
                 </div>
             </td>
             <td>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-success fs-6">${certificatesCount}</span>
+                    <span class="badge bg-success fs-6" id="certificatesCountBadge-${e.id}">${certificatesCount}</span>
                     <span class="text-muted small">issued</span>
-                    <button class="btn btn-sm btn-outline-secondary p-1 ms-1" onclick="refreshCertificateCount('${e.id}')" title="Refresh certificate count">
-                        <i class="fas fa-sync-alt" style="font-size: 0.75rem;"></i>
-                    </button>
                 </div>
             </td>
             <td>
@@ -450,6 +586,9 @@ function renderEventsFromCache() {
     }).join('');
     
     tbody.innerHTML = rows;
+    
+    // Setup Realtime DB listeners for counters after rendering
+    setupRealtimeCountersForAllEvents(eventsCache);
 }
 
 const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
@@ -490,23 +629,12 @@ async function saveEvent() {
             await db.collection('events').doc(ref.id).set({ participantsCount: 0, certificatesCount: 0 }, { merge: true }); 
         }
         eventModal.hide(); 
+        showAlert('Event saved successfully!', 'success');
         
-        // Update events cache instead of full reload
-        if (id) {
-            // Update existing event in cache
-            const eventIndex = eventsCache?.findIndex(e => e.id === id);
-            if (eventIndex !== undefined && eventIndex !== -1 && eventsCache) {
-                eventsCache[eventIndex] = { id, ...payload };
-            }
-        } else {
-            // Add new event to cache
-            if (!eventsCache) eventsCache = [];
-            eventsCache.push({ id: ref.id, ...payload, participantsCount: 0, certificatesCount: 0 });
-        }
-        
-        // Re-render events table
-        renderEventsFromCache();
+        // Reload events to ensure consistency (Cloud Functions will sync to Realtime DB)
+        await loadEvents();
     } catch (e) {
+        console.error('Error saving event:', e);
         showAlert('Failed: ' + e.message, 'danger');
     }
 }
@@ -516,13 +644,13 @@ function confirmDeleteEvent(id, title) {
         try {
             await deleteEventCascade(id);
             
-            // Update events cache instead of full reload
-            if (eventsCache) {
-                eventsCache = eventsCache.filter(e => e.id !== id);
-                renderEventsFromCache();
-            }
+            // Reload events to ensure consistency (Cloud Functions will clean up Realtime DB)
+            await loadEvents();
+            
+            showAlert('Event deleted successfully!', 'success');
             
         } catch (error) {
+            console.error('Error deleting event:', error);
             showAlert('Failed to delete event: ' + error.message, 'danger');
         }
     });
@@ -539,7 +667,7 @@ async function deleteEventCascade(eventId) {
         async function manageParticipants(eventId) {
     try {
         const doc = await db.collection('events').doc(eventId).get();
-        selectedEvent = { id: doc.id, data: doc.data() };
+                selectedEvent = { id: doc.id, data: doc.data() };
         el('participantsEventName').innerText = selectedEvent.data.title || selectedEvent.data.slug || selectedEvent.id; 
         
         // Initialize optimized participants manager if available
@@ -551,8 +679,8 @@ async function deleteEventCascade(eventId) {
             participantsManager = null;
         }
         
-        renderParticipantsTableHead();
-        switchTab('participants');
+                renderParticipantsTableHead();
+                switchTab('participants');
         await loadParticipants();
     } catch (error) {
         console.error('Error in manageParticipants:', error);
@@ -657,41 +785,85 @@ window.removeEventField = removeEventField;
 window.normalizeEventFields = normalizeEventFields;
 
 // Load ALL participants for the selected event into local cache, then render
-async function loadParticipants() { 
+async function loadParticipants(forceRefresh = false) { 
     if (!selectedEvent) return; 
     
     const tbody = document.querySelector('#participantsTable tbody'); 
     const extraFields = (selectedEvent?.data?.participantFields || []);
     const totalColumns = 4 + extraFields.length;
     
+    // Show loading state
     tbody.innerHTML = `<tr><td colspan="${totalColumns}" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading participants...</div></td></tr>`;
     
     try {
-        // 1) Try hydrate from IndexedDB (fast path)
-        try {
-            const cached = await idbLoadParticipants(selectedEvent.id);
-            if (cached?.rows?.length) {
-                participantsCache = cached.rows.slice();
-                if (participantsManager) {
-                    participantsManager.participantsCache = new Map();
-                    cached.rows.forEach(p => participantsManager.participantsCache.set(p.id, p));
-                    participantsManager.hasMore = false;
+        let finalParticipants = [];
+        let dataSource = 'unknown';
+        
+        // If force refresh, skip IndexedDB and Realtime DB, go straight to Firestore
+        if (!forceRefresh) {
+            // 1) Try hydrate from IndexedDB (fast path, most complete data)
+            try {
+                const cached = await idbLoadParticipants(selectedEvent.id);
+                if (cached?.rows?.length > 0) {
+                    finalParticipants = cached.rows.slice();
+                    dataSource = 'indexeddb';
+                    console.log(`✅ Loaded ${finalParticipants.length} participants from IndexedDB`);
                 }
-                window.__participantsLocalIndex = cached.rows.map(p => ({
-                    id: p.id,
-                    name: (p.name || '').toLowerCase(),
-                    email: (p.email || '').toLowerCase()
-                }));
-                renderParticipantsFromCache();
-                el('participantsCount').innerText = cached.rows.length;
-                updateSortIcons();
-                showAlert(`Loaded ${cached.rows.length} participants (cached)`, 'info', 1500);
+            } catch (idbError) {
+                console.warn('IndexedDB load failed:', idbError);
             }
-        } catch (_) {}
-
-        // 2) Refresh in background from Firestore and update UI when done
-        const all = await fetchAllParticipantsLocal();
-        if (all.length === 0) {
+            
+            // 2) Try to load from Realtime DB index (free reads, lightweight)
+            // Only use if IndexedDB didn't have data
+            if (finalParticipants.length === 0 && realtimeDb) {
+                try {
+                    const indexRef = realtimeDb.ref(`events/${selectedEvent.id}/participants/index`);
+                    const indexSnapshot = await indexRef.once('value');
+                    const indexData = indexSnapshot.val();
+                    
+                    if (indexData && Object.keys(indexData).length > 0) {
+                        // Convert index to participant-like objects for display
+                        finalParticipants = Object.keys(indexData).map(participantId => ({
+                            id: participantId,
+                            name: indexData[participantId].name || '',
+                            email: indexData[participantId].email || '',
+                            certificateStatus: indexData[participantId].certificateStatus || 'pending',
+                            updatedAt: indexData[participantId].updatedAt ? { seconds: Math.floor(indexData[participantId].updatedAt / 1000) } : null
+                        }));
+                        dataSource = 'realtime-index';
+                        console.log(`✅ Loaded ${finalParticipants.length} participants from Realtime DB index`);
+                    }
+                } catch (rtdbError) {
+                    console.warn('⚠️ Failed to load from Realtime DB index:', rtdbError);
+                }
+            }
+        }
+        
+        // 3) Fallback to Firestore if no cached data or force refresh
+        if (finalParticipants.length === 0 || forceRefresh) {
+            const all = await fetchAllParticipantsLocal();
+            finalParticipants = all;
+            dataSource = 'firestore';
+            console.log(`✅ Loaded ${finalParticipants.length} participants from Firestore`);
+        }
+        
+        // Update all caches consistently
+        participantsCache = finalParticipants.slice();
+        if (participantsManager) {
+            participantsManager.participantsCache = new Map();
+            finalParticipants.forEach(p => participantsManager.participantsCache.set(p.id, p));
+            participantsManager.hasMore = false;
+        }
+        
+        // Build search index
+        window.__participantsLocalIndex = finalParticipants.map(p => ({
+            id: p.id,
+            name: (p.name || '').toLowerCase(),
+            email: (p.email || '').toLowerCase()
+        }));
+        
+        // Single render point - always render after cache is updated
+        if (finalParticipants.length === 0) {
             tbody.innerHTML = `
                 <tr><td colspan="${totalColumns}" class="empty-state">
                     <i class="fa-solid fa-users-slash"></i>
@@ -701,9 +873,24 @@ async function loadParticipants() {
         } else {
             renderParticipantsFromCache();
         }
-        el('participantsCount').innerText = all.length;
+        
+        // Update UI consistently
+        el('participantsCount').innerText = finalParticipants.length;
         updateSortIcons();
-        showAlert(`Loaded ${all.length} participants`, 'success', 2000);
+        
+        // Show appropriate message
+        if (forceRefresh) {
+            showAlert(`Refreshed: ${finalParticipants.length} participants`, 'success', 2000);
+        } else {
+            const sourceMessages = {
+                'indexeddb': `Loaded ${finalParticipants.length} participants (cached)`,
+                'realtime-index': `Loaded ${finalParticipants.length} participants (from index)`,
+                'firestore': `Loaded ${finalParticipants.length} participants`,
+                'unknown': `Loaded ${finalParticipants.length} participants`
+            };
+            showAlert(sourceMessages[dataSource] || sourceMessages['unknown'], 'success', 2000);
+        }
+        
     } catch (error) {
         console.error('Error loading participants:', error);
         tbody.innerHTML = `
@@ -712,6 +899,7 @@ async function loadParticipants() {
                 <h6 class="mt-2">Error loading participants</h6>
                 <p class="mb-0 text-danger">${error.message}</p>
             </td></tr>`;
+        showAlert('Failed to load participants: ' + error.message, 'danger');
     }
 }
 
@@ -802,36 +990,31 @@ async function loadParticipantsFallback() {
     const tbody = document.querySelector('#participantsTable tbody');
     const extraFields = (selectedEvent?.data?.participantFields || []);
     const totalColumns = 4 + extraFields.length;
-    
-    try {
-        const snap = await db.collection('events').doc(selectedEvent.id).collection('participants').orderBy('name').get();
-        participantsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderParticipantsFromCache();
-        
-        // Update participant count display
+            
+            try {
+        const snap = await db.collection('events').doc(selectedEvent.id).collection('participants').orderBy('name').get(); 
+                participantsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderParticipantsFromCache();
+                
+                // Update participant count display
         el('participantsCount').innerText = snap.size;
         
-        // Calculate certificate count
-        const certificatesCount = participantsCache.filter(p => p.certificateStatus === 'downloaded').length;
-        
-        await db.collection('events').doc(selectedEvent.id).set({
-            participantsCount: snap.size,
-            certificatesCount: certificatesCount
-        }, { merge: true });
-        
-    } catch (error) {
+        // Note: Cloud Functions will automatically update event document counts
+        // No need to manually update counts here
+                
+            } catch (error) {
         console.error('Fallback loading error:', error);
-        tbody.innerHTML = `
-            <tr><td colspan="${totalColumns}" class="empty-state">
-                <i class="fa-solid fa-exclamation-triangle text-danger"></i>
-                <h6 class="mt-2">Error loading participants</h6>
-                <p class="mb-0 text-danger">${error.message}</p>
-            </td></tr>`;
-    }
-}
+                tbody.innerHTML = `
+                    <tr><td colspan="${totalColumns}" class="empty-state">
+                        <i class="fa-solid fa-exclamation-triangle text-danger"></i>
+                        <h6 class="mt-2">Error loading participants</h6>
+                        <p class="mb-0 text-danger">${error.message}</p>
+                    </td></tr>`;
+            }
+        }
 
 const participantModal = new bootstrap.Modal(document.getElementById('participantModal'));
-function openParticipantModal(id) {
+async function openParticipantModal(id) {
     if (!selectedEvent) return showAlert('Select an event first', 'warning'); 
     
     el('participantForm').reset();
@@ -866,9 +1049,30 @@ function openParticipantModal(id) {
         customFieldsSection.style.display = 'none';
     }
     
-    // Load existing data if editing (use local cache instead of database query)
+    // Load existing data if editing
     if (id) {
-        const participant = participantsCache.find(p => p.id === id);
+        let participant = participantsCache.find(p => p.id === id);
+        
+        // If participant found but missing additionalFields (loaded from Realtime DB index),
+        // fetch full document from Firestore
+        if (participant && (!participant.additionalFields || Object.keys(participant.additionalFields || {}).length === 0) && selectedEvent.data.participantFields?.length > 0) {
+            try {
+                const doc = await db.collection('events').doc(selectedEvent.id)
+                    .collection('participants').doc(id).get();
+                if (doc.exists) {
+                    const fullData = doc.data();
+                    participant = { id: doc.id, ...fullData };
+                    // Update cache with full data
+                    const index = participantsCache.findIndex(p => p.id === id);
+                    if (index !== -1) {
+                        participantsCache[index] = participant;
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to fetch full participant data:', error);
+            }
+        }
+        
         if (participant) {
             el('participantName').value = participant.name || '';
             el('participantEmail').value = participant.email || '';
@@ -880,8 +1084,34 @@ function openParticipantModal(id) {
                 if (input) input.value = v;
             });
         } else {
-            showAlert('Participant not found in cache. Please refresh the participants list.', 'warning');
-            return;
+            // If still not found, try fetching directly from Firestore
+            try {
+                const doc = await db.collection('events').doc(selectedEvent.id)
+                    .collection('participants').doc(id).get();
+                if (doc.exists) {
+                    const fullData = doc.data();
+                    participant = { id: doc.id, ...fullData };
+                    // Add to cache
+                    participantsCache.push(participant);
+                    
+                    el('participantName').value = participant.name || '';
+                    el('participantEmail').value = participant.email || '';
+                    
+                    // Load custom fields
+                    (selectedEvent.data.participantFields || []).forEach(f => {
+                        const v = (participant.additionalFields || {})[f.key] || '';
+                        const input = document.getElementById('pf_' + f.key);
+                        if (input) input.value = v;
+                    });
+                } else {
+                    showAlert('Participant not found. Please refresh the participants list.', 'warning');
+                    return;
+                }
+            } catch (error) {
+                console.error('Error fetching participant:', error);
+                showAlert('Failed to load participant data. Please refresh the participants list.', 'danger');
+                return;
+            }
         }
     }
     
@@ -897,9 +1127,13 @@ async function saveParticipant() {
     const payload = {
         name: el('participantName').value.trim(),
         email: email,
-        certificateStatus: 'pending',
-        id: id
+        certificateStatus: 'pending'
     };
+    
+    // Only include id if it exists (for updates)
+    if (id) {
+        payload.id = id;
+    }
     
     if (!payload.name || !payload.email) return showAlert('Name and email are required', 'warning'); 
     
@@ -934,13 +1168,27 @@ async function saveParticipant() {
             // Use optimized manager to save participant
             const participant = await participantsManager.saveParticipant(payload, !!id);
             
+            // Update global participantsCache to keep it in sync
+            if (id) {
+                // Update existing participant in cache
+                const index = participantsCache.findIndex(p => p.id === id);
+                if (index !== -1) {
+                    participantsCache[index] = participant;
+                } else {
+                    participantsCache.push(participant);
+                }
+            } else {
+                // Add new participant to cache
+                participantsCache.push(participant);
+            }
+            
             participantModal.hide(); 
             
-            // Update UI - real-time listener will handle this automatically
+            // Update UI
             renderParticipantsFromCache();
             
             // Update participant count display
-            const totalCount = participantsManager.getCachedParticipants().length;
+            const totalCount = participantsCache.length;
             el('participantsCount').innerText = totalCount;
             
             showAlert('Participant saved successfully!', 'success');
@@ -960,22 +1208,25 @@ async function saveParticipantFallback(payload, id) {
     const eventId = selectedEvent.id;
     
     try {
+        // Remove id from payload - it's the document ID, not a field
+        const { id: _, ...dataWithoutId } = payload;
+        
         if (id) {
             // Update existing participant
-            await db.collection('events').doc(eventId).collection('participants').doc(id).set(payload, { merge: true }); 
+            await db.collection('events').doc(eventId).collection('participants').doc(id).set(dataWithoutId, { merge: true }); 
             
             // Update local cache
             const index = participantsCache.findIndex(p => p.id === id);
             if (index !== -1) {
-                participantsCache[index] = { id, ...payload };
+                participantsCache[index] = { id, ...dataWithoutId };
             }
         } else {
             // Add new participant
-            payload.createdAt = firebase.firestore.FieldValue.serverTimestamp(); 
-            const docRef = await db.collection('events').doc(eventId).collection('participants').add(payload); 
+            dataWithoutId.createdAt = firebase.firestore.FieldValue.serverTimestamp(); 
+            const docRef = await db.collection('events').doc(eventId).collection('participants').add(dataWithoutId); 
             
             // Add to local cache
-            participantsCache.push({ id: docRef.id, ...payload });
+            participantsCache.push({ id: docRef.id, ...dataWithoutId });
         }
         
         participantModal.hide(); 
@@ -996,7 +1247,12 @@ async function saveParticipantFallback(payload, id) {
 function confirmDeleteParticipant(id, name) {
     showConfirm(`Delete participant "${name}"?`, async () => {
         try {
-            await db.collection('events').doc(selectedEvent.id).collection('participants').doc(id).delete(); 
+            // Use participantsManager if available
+            if (participantsManager) {
+                await participantsManager.deleteParticipant(id);
+            } else {
+                await db.collection('events').doc(selectedEvent.id).collection('participants').doc(id).delete();
+            }
             
             // Update local cache
             participantsCache = participantsCache.filter(p => p.id !== id);
@@ -1007,20 +1263,26 @@ function confirmDeleteParticipant(id, name) {
             // Update participant count display
             el('participantsCount').innerText = participantsCache.length;
             
-            // Update event document counts
-            const certificatesCount = participantsCache.filter(p => p.certificateStatus === 'downloaded').length;
-            await db.collection('events').doc(selectedEvent.id).set({
-                participantsCount: participantsCache.length,
-                certificatesCount: certificatesCount
-            }, { merge: true });
+            // Note: Cloud Functions will automatically update event document counts
+            // No need to manually update counts here
+            
+            showAlert('Participant deleted successfully!', 'success');
             
         } catch (error) {
+            console.error('Error deleting participant:', error);
             showAlert('Failed to delete participant: ' + error.message, 'danger');
         }
     });
 }
 
+// Refresh participants list (force reload from Firestore)
+async function refreshParticipants() {
+    if (!selectedEvent) return;
+    await loadParticipants(true); // Force refresh
+}
+
 window.loadParticipants = loadParticipants;
+window.refreshParticipants = refreshParticipants;
 window.openParticipantModal = openParticipantModal;
 window.saveParticipant = saveParticipant;
 window.confirmDeleteParticipant = confirmDeleteParticipant;
@@ -1497,12 +1759,8 @@ async function uploadBulkParticipants() {
         // Update participant count display
         el('participantsCount').innerText = participantsCache.length;
         
-        // Update event document counts
-        const certificatesCount = participantsCache.filter(p => p.certificateStatus === 'downloaded').length;
-        await db.collection('events').doc(selectedEvent.id).set({
-            participantsCount: participantsCache.length,
-            certificatesCount: certificatesCount
-        }, { merge: true });
+        // Note: Cloud Functions will automatically update event document counts
+        // No need to manually update counts here
         
         showAlert(`Successfully imported ${imported} participants`, 'success');
         bulkUploadModal.hide();
@@ -1652,7 +1910,75 @@ async function performSearch(query) {
             return;
         }
 
-        // 2) Server fallback for global search
+        // 2) Realtime DB search index (fast, free reads)
+        if (selectedEvent && realtimeDb) {
+            try {
+                const searchRef = realtimeDb.ref(`events/${selectedEvent.id}/search`);
+                const searchSnapshot = await searchRef.once('value');
+                const searchData = searchSnapshot.val();
+                
+                if (searchData) {
+                    // Search through searchText field
+                    const matchingIds = Object.keys(searchData)
+                        .filter(participantId => {
+                            const searchEntry = searchData[participantId];
+                            return searchEntry.searchText && searchEntry.searchText.includes(q);
+                        })
+                        .slice(0, 200); // cap for UI
+                    
+                    if (matchingIds.length > 0) {
+                        // Fetch matching participants from cache or index
+                        const base = participantsManager
+                            ? (participantsManager.getCachedParticipants() || [])
+                            : (participantsCache || []);
+                        const searchResults = base.filter(p => matchingIds.includes(p.id));
+                        
+                        if (searchResults.length > 0) {
+                            renderSearchResults(searchResults);
+                            console.log('✅ Search results from Realtime DB index');
+                            return;
+                        }
+                    }
+                }
+            } catch (rtdbError) {
+                console.warn('⚠️ Realtime DB search failed, falling back:', rtdbError);
+            }
+        }
+
+        // 3) Cloud Function search (server-side)
+        if (selectedEvent && typeof firebase !== 'undefined' && firebase.functions) {
+            try {
+                const searchFunction = firebase.functions().httpsCallable('searchParticipants');
+                const result = await searchFunction({
+                    eventId: selectedEvent.id,
+                    query: q,
+                    limit: 50
+                });
+                
+                const results = result.data.results || [];
+                const tbody = document.querySelector('#participantsTable tbody');
+                if (!tbody) return;
+                
+                if (results.length === 0) {
+                    const extraFields = (selectedEvent?.data?.participantFields || []);
+                    const totalColumns = 4 + extraFields.length;
+                    tbody.innerHTML = `
+                        <tr><td colspan="${totalColumns}" class="empty-state">
+                            <i class="fa-solid fa-search"></i>
+                            <h6 class="mt-2">No participants found</h6>
+                            <p class="mb-0">Try adjusting your search terms</p>
+                        </td></tr>`;
+                } else {
+                    renderSearchResults(results);
+                }
+                return;
+            } catch (error) {
+                console.error('Cloud Function search failed, falling back to local:', error);
+                // Fall through to local search
+            }
+        }
+        
+        // 4) Fallback to local search if Cloud Function unavailable
         if (participantsManager) {
             const results = await participantsManager.searchParticipants(q);
             const tbody = document.querySelector('#participantsTable tbody');
@@ -1722,12 +2048,40 @@ function renderSearchResults(participants) {
     }).join('');
 }
 
-// Enhanced export with progress
+// Enhanced export with Cloud Function
 async function exportParticipantsCsvOptimized() {
-    if (!selectedEvent || !participantsManager) return showAlert('Select an event first', 'warning');
+    if (!selectedEvent) return showAlert('Select an event first', 'warning');
     
     try {
         showAlert('Preparing export...', 'info', 2000);
+        
+        // Use Cloud Function for export
+        if (typeof firebase !== 'undefined' && firebase.functions) {
+            try {
+                const exportFunction = firebase.functions().httpsCallable('exportParticipantsCSV');
+                const result = await exportFunction({
+                    eventId: selectedEvent.id
+                });
+                
+                // Download from Cloud Storage URL
+                const a = document.createElement('a');
+                a.href = result.data.downloadUrl;
+                a.download = `participants-${selectedEvent.id}-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                
+                showAlert(`Export completed! ${result.data.recordCount} participants exported.`, 'success');
+                return;
+            } catch (error) {
+                console.error('Cloud Function export failed, falling back to local:', error);
+                // Fall through to local export
+            }
+        }
+        
+        // Fallback to local export
+        if (!participantsManager) {
+            showAlert('Participants manager not available', 'warning');
+            return;
+        }
         
         const csvData = await participantsManager.exportToCsv({
             includeCustomFields: true,
@@ -1800,34 +2154,96 @@ async function exportParticipantsCsvLocal() {
 let __liveUnsub = null;
 async function toggleLiveUpdates(enable) {
     try {
-        if (__liveUnsub) { __liveUnsub(); __liveUnsub = null; }
+        if (__liveUnsub) { 
+            if (typeof __liveUnsub === 'function') {
+                __liveUnsub(); 
+            } else if (__liveUnsub.off) {
+                __liveUnsub.off();
+            }
+            __liveUnsub = null; 
+        }
         if (!enable) return showAlert('Live updates off', 'info', 1500);
-        if (!selectedEvent) return;
-        const col = db.collection('events').doc(selectedEvent.id).collection('participants');
-        __liveUnsub = col.onSnapshot((snap) => {
-            let changed = false;
-            snap.docChanges().forEach(ch => {
-                const p = { id: ch.doc.id, ...ch.doc.data() };
-                if (ch.type === 'removed') {
-                    participantsCache = (participantsCache || []).filter(x => x.id !== p.id);
-                } else {
-                    const idx = (participantsCache || []).findIndex(x => x.id === p.id);
-                    if (idx === -1) participantsCache.push(p); else participantsCache[idx] = p;
+        if (!selectedEvent || !realtimeDb) return;
+        
+        // Use Realtime DB for change notifications instead of Firestore onSnapshot
+        const changesRef = realtimeDb.ref(`events/${selectedEvent.id}/participants/changes`);
+        
+        __liveUnsub = changesRef.on('child_added', async (snapshot) => {
+            try {
+                const change = snapshot.val();
+                if (!change || !change.participantId) return;
+                
+                const participantId = change.participantId;
+                let changed = false;
+                
+                if (change.type === 'deleted') {
+                    // Remove from cache
+                    participantsCache = (participantsCache || []).filter(x => x.id !== participantId);
+                    changed = true;
+                    
+                    // Update participantsManager cache
+                    if (participantsManager) {
+                        participantsManager.participantsCache.delete(participantId);
+                    }
+                    
+                    // Update search index
+                    if (window.__participantsLocalIndex) {
+                        window.__participantsLocalIndex = window.__participantsLocalIndex.filter(x => x.id !== participantId);
+                    }
+                } else if (change.type === 'added' || change.type === 'updated') {
+                    // Always fetch full document from Firestore for consistency
+                    try {
+                        const doc = await db.collection('events').doc(selectedEvent.id)
+                            .collection('participants').doc(participantId).get();
+                        if (doc.exists) {
+                            const p = { id: doc.id, ...doc.data() };
+                            const idx = (participantsCache || []).findIndex(x => x.id === participantId);
+                            if (idx === -1) {
+                                participantsCache.push(p);
+                            } else {
+                                participantsCache[idx] = p;
+                            }
+                            changed = true;
+                            
+                            // Update participantsManager cache
+                            if (participantsManager) {
+                                participantsManager.participantsCache.set(participantId, p);
+                            }
+                            
+                            // Update search index
+                            if (window.__participantsLocalIndex) {
+                                const searchIdx = window.__participantsLocalIndex.findIndex(x => x.id === participantId);
+                                if (searchIdx >= 0) {
+                                    window.__participantsLocalIndex[searchIdx] = {
+                                        id: p.id,
+                                        name: (p.name || '').toLowerCase(),
+                                        email: (p.email || '').toLowerCase()
+                                    };
+                                } else {
+                                    window.__participantsLocalIndex.push({
+                                        id: p.id,
+                                        name: (p.name || '').toLowerCase(),
+                                        email: (p.email || '').toLowerCase()
+                                    });
+                                }
+                            }
+                        }
+                    } catch (fetchError) {
+                        console.warn('Failed to fetch participant document:', fetchError);
+                    }
                 }
-                changed = true;
-            });
-            if (changed) {
-                // Update local index quickly
-                window.__participantsLocalIndex = (participantsCache || []).map(r => ({
-                    id: r.id,
-                    name: (r.name || '').toLowerCase(),
-                    email: (r.email || '').toLowerCase()
-                }));
-                renderParticipantsFromCache();
-                el('participantsCount').innerText = participantsCache.length;
+                
+                // Always re-render if cache changed
+                if (changed) {
+                    renderParticipantsFromCache();
+                    el('participantsCount').innerText = participantsCache.length;
+                }
+            } catch (error) {
+                console.error('Error processing live update:', error);
             }
         });
-        showAlert('Live updates on', 'success', 1500);
+        
+        showAlert('Live updates on (Realtime DB)', 'success', 1500);
     } catch (e) {
         showAlert('Live updates failed: ' + e.message, 'danger');
     }
@@ -1871,7 +2287,58 @@ async function uploadBulkParticipantsOptimized() {
             )
         }));
         
-        // Use optimized bulk upload manager with progress callback
+        // Use Cloud Function for bulk upload with Realtime DB progress tracking
+        if (typeof firebase !== 'undefined' && firebase.functions && realtimeDb) {
+            try {
+                const bulkUploadFunction = firebase.functions().httpsCallable('bulkUploadParticipants');
+                
+                // Listen to progress updates from Realtime Database
+                const progressRef = realtimeDb.ref(`bulkUploads/${currentUser.uid}/progress`);
+                const progressListener = progressRef.on('value', (snapshot) => {
+                    const progress = snapshot.val();
+                    if (progress) {
+                        const percentage = Math.round(progress.percentage || 0);
+                        progressBar.style.width = percentage + '%';
+                        progressPercentage.textContent = percentage + '%';
+                        processedCount.textContent = progress.processed || 0;
+                        successCount.textContent = progress.processed || 0;
+                    }
+                });
+                
+                // Call Cloud Function
+                const result = await bulkUploadFunction({
+                    eventId: selectedEvent.id,
+                    participants: participants
+                });
+                
+                // Remove progress listener
+                progressRef.off('value', progressListener);
+                
+                // Complete progress
+                progressBar.style.width = '100%';
+                progressPercentage.textContent = '100%';
+                processedCount.textContent = result.data.processed;
+                successCount.textContent = result.data.processed;
+                
+                showAlert(`Successfully uploaded ${result.data.processed} participants!`, 'success');
+                
+                // Reload participants to get updated data
+                await loadParticipants();
+                
+                // Close modal and reset after a short delay
+                setTimeout(() => {
+                    bulkUploadModal.hide();
+                    resetBulkUploadModal();
+                }, 2000);
+                return;
+            } catch (error) {
+                console.error('Cloud Function bulk upload failed:', error);
+                showAlert('Bulk upload failed: ' + error.message, 'danger');
+                // Fall through to local upload as fallback
+            }
+        }
+        
+        // Fallback to local bulk upload manager
         const result = await participantsManager.bulkUpload(participants, (progress) => {
             // Update progress UI
             const percentage = Math.round(progress.percentage);
@@ -1928,11 +2395,41 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Migration function to populate initial counters
+async function runMigration() {
+    if (!currentUser) {
+        showAlert('Please sign in first', 'warning');
+        return;
+    }
+    
+    try {
+        showAlert('Starting migration... This may take a moment.', 'info');
+        
+        const migrateFunction = firebase.functions().httpsCallable('migrateCounters');
+        const result = await migrateFunction({});
+        
+        if (result.data.success) {
+            showAlert(
+                `Migration complete! Processed ${result.data.processed} events. ${result.data.errors > 0 ? `(${result.data.errors} errors)` : ''}`,
+                'success'
+            );
+            // Reload events to show updated counts
+            loadEvents();
+        } else {
+            showAlert('Migration failed: ' + (result.data.message || 'Unknown error'), 'danger');
+        }
+    } catch (error) {
+        console.error('Migration error:', error);
+        showAlert('Migration failed: ' + error.message, 'danger');
+    }
+}
+
 // Make functions globally available
 window.signIn = signIn;
 window.signOut = signOut;
 window.showApp = showApp;
 window.showGate = showGate;
+window.runMigration = runMigration; // Make migration function available globally
 
 // Ensure gate screen is shown initially
 document.addEventListener('DOMContentLoaded', function() {
@@ -1958,8 +2455,32 @@ async function loadAdmins() {
         tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading admins...</div></td></tr>';
         
         try {
+            // Try to load from Realtime DB first (free reads)
+            if (realtimeDb) {
+                try {
+                    const adminsRef = realtimeDb.ref('admins/list');
+                    const snapshot = await adminsRef.once('value');
+                    const adminsList = snapshot.val();
+                    
+                    if (adminsList && Array.isArray(adminsList) && adminsList.length > 0) {
+                        adminsCache = adminsList.map(admin => ({
+                            id: admin.id,
+                            email: admin.email,
+                            createdAt: admin.createdAt ? { seconds: Math.floor(admin.createdAt / 1000) } : null
+                        }));
+                        console.log('✅ Loaded admins from Realtime Database');
+                        renderAdminsFromCache();
+                        return;
+                    }
+                } catch (rtdbError) {
+                    console.warn('⚠️ Failed to load admins from Realtime DB, falling back to Firestore:', rtdbError);
+                }
+            }
+            
+            // Fallback to Firestore
             const snap = await db.collection('admins').orderBy('createdAt', 'desc').get();
             adminsCache = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            console.log('✅ Loaded admins from Firestore');
         } catch (error) {
             tbody.innerHTML = `
                 <tr><td colspan="3" class="empty-state">
@@ -2028,8 +2549,32 @@ async function loadInvites() {
         tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading invites...</div></td></tr>';
         
         try {
+            // Try to load from Realtime DB first (free reads)
+            if (realtimeDb) {
+                try {
+                    const invitesRef = realtimeDb.ref('invites/list');
+                    const snapshot = await invitesRef.once('value');
+                    const invitesList = snapshot.val();
+                    
+                    if (invitesList && Array.isArray(invitesList) && invitesList.length > 0) {
+                        invitesCache = invitesList.map(invite => ({
+                            id: invite.id,
+                            email: invite.email,
+                            createdAt: invite.createdAt ? { seconds: Math.floor(invite.createdAt / 1000) } : null
+                        }));
+                        console.log('✅ Loaded invites from Realtime Database');
+                        renderInvitesFromCache();
+                        return;
+                    }
+                } catch (rtdbError) {
+                    console.warn('⚠️ Failed to load invites from Realtime DB, falling back to Firestore:', rtdbError);
+                }
+            }
+            
+            // Fallback to Firestore
             const snap = await db.collection('invites').orderBy('createdAt', 'desc').get();
-            invitesCache = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            invitesCache = snap.docs.map(doc => ({ id: doc.id, email: doc.id, ...doc.data() }));
+            console.log('✅ Loaded invites from Firestore');
         } catch (error) {
             tbody.innerHTML = `
                 <tr><td colspan="3" class="empty-state">

@@ -120,16 +120,19 @@ class ParticipantsManager {
         if (!this.currentEventId) throw new Error('No event selected');
 
         try {
+            // Remove id from payload - it's the document ID, not a field
+            const { id, ...dataWithoutId } = participantData;
+            
             const payload = {
-                ...participantData,
+                ...dataWithoutId,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
             let docRef;
-            if (isUpdate && participantData.id) {
+            if (isUpdate && id) {
                 // Update existing
                 docRef = db.collection('events').doc(this.currentEventId)
-                    .collection('participants').doc(participantData.id);
+                    .collection('participants').doc(id);
                 await docRef.set(payload, { merge: true });
             } else {
                 // Create new

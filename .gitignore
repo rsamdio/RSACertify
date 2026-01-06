@@ -29,3 +29,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Firebase Functions
+functions/node_modules/
+functions/lib/
