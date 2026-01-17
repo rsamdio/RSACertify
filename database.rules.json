@@ -2,6 +2,10 @@
   "rules": {
     "events": {
       ".read": "auth != null",
+      "list": {
+        ".read": "auth != null",
+        ".write": false
+      },
       "$eventId": {
         "counters": {
           ".read": true,
@@ -22,7 +26,7 @@
           }
         },
         "search": {
-          ".read": "auth != null",
+          ".read": true,
           ".write": false
         },
         "changes": {

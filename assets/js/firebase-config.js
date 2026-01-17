@@ -5,7 +5,8 @@ const firebaseConfig = {
     storageBucket: "rsacertify.firebasestorage.app",
     messagingSenderId: "623867096357",
     appId: "1:623867096357:web:8af2600adc0145b14dfecc",
-    measurementId: "G-RTT3BLGHYN"
+    measurementId: "G-RTT3BLGHYN",
+    databaseURL: "https://rsacertify-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 function validateFirebaseConfig(config) {
@@ -37,16 +38,31 @@ function initializeFirebaseApp() {
             const auth = firebase.auth();
             const db = firebase.firestore();
             
+            // Initialize Realtime Database
+            const realtimeDb = firebase.database();
+            window.realtimeDb = realtimeDb;
+            
     // Configure Firestore settings
     db.settings({
-        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+        merge: true
     });
     
-    // Initialize Analytics
-    const analytics = firebase.analytics();
+    // Initialize Analytics (with IndexedDB check)
+    let analytics = null;
+    try {
+        if (firebase.analytics && firebase.analytics.isSupported && firebase.analytics.isSupported()) {
+            analytics = firebase.analytics();
+            // Set analytics user properties
+            analytics.setAnalyticsCollectionEnabled(true);
+        } else {
+            console.warn('Analytics not supported in this environment (IndexedDB unavailable)');
+        }
+    } catch (analyticsError) {
+        console.warn('Analytics initialization failed:', analyticsError);
+    }
     
-    // Set analytics user properties
-    analytics.setAnalyticsCollectionEnabled(true);
+    console.log('✅ Realtime Database initialized');
             
             // Set up auth state listener
             auth.onAuthStateChanged((user) => {

@@ -110,20 +110,20 @@ function showAlert(message, type = 'info', duration = 5000) {
 }
 
 // Authentication functions
-async function signIn() {
-    try {
+        async function signIn() {
+            try {
         if (!auth) {
             showAlert('Firebase authentication not available. Please refresh the page.', 'danger');
             return;
         }
         
         const provider = new firebase.auth.GoogleAuthProvider();
-        provider.addScope('email');
-        
+                provider.addScope('email');
+                
         try {
             showAlert('Opening Google sign-in popup...', 'info', 2000);
             await auth.signInWithPopup(provider);
-        } catch (popupError) {
+                } catch (popupError) {
             console.error('Sign-in popup error:', popupError);
             if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
                 showAlert('Popup blocked. Redirecting to Google sign-in...', 'warning', 3000);
@@ -132,8 +132,8 @@ async function signIn() {
             }
             await auth.signInWithRedirect(provider);
         }
-    } catch (error) {
-        showAlert('Authentication failed: ' + error.message, 'danger');
+            } catch (error) {
+                showAlert('Authentication failed: ' + error.message, 'danger');
     }
 }
 
@@ -142,7 +142,7 @@ window.signIn = signIn;
 
 function signOut() { 
     if (auth) {
-        auth.signOut(); 
+    auth.signOut(); 
     } else {
         console.error('Firebase auth not available for sign out');
     }
@@ -304,70 +304,46 @@ async function loadEvents() {
     
     try {
         let eventsData = [];
-        let useRealtimeDB = false;
         
-        // Try to load from Realtime DB first (free reads)
+        // Try to load from Realtime DB events/list first (1 free read)
         if (realtimeDb) {
             try {
-                const eventsRef = realtimeDb.ref('events');
-                const snapshot = await eventsRef.once('value');
-                const eventsObj = snapshot.val();
+                const eventsListRef = realtimeDb.ref('events/list');
+                const snapshot = await eventsListRef.once('value');
+                const eventsList = snapshot.val();
                 
-                if (eventsObj) {
-                    // Convert Realtime DB structure to array
-                    // Filter out events that don't have valid meta (deleted events)
-                    eventsData = Object.keys(eventsObj)
-                        .filter(eventId => {
-                            const meta = eventsObj[eventId]?.meta;
-                            // Only include events that have valid meta data
-                            return meta && (meta.title || meta.date || meta.participantsCount !== undefined);
-                        })
-                        .map(eventId => {
-                            const meta = eventsObj[eventId].meta || {};
-                            return {
-                                id: eventId,
-                                title: meta.title || '',
-                                date: meta.date || '',
-                                participantsCount: meta.participantsCount || 0,
-                                certificatesCount: meta.certificatesCount || 0,
-                                updatedAt: meta.updatedAt ? { seconds: Math.floor(meta.updatedAt / 1000) } : null,
-                                createdAt: meta.createdAt ? { seconds: Math.floor(meta.createdAt / 1000) } : null
-                            };
-                        });
-                    useRealtimeDB = true;
-                    console.log('✅ Loaded events from Realtime Database');
+                if (eventsList && Array.isArray(eventsList) && eventsList.length > 0) {
+                    // Convert to expected format
+                    eventsData = eventsList.map(event => ({
+                        id: event.id,
+                        title: event.title || '',
+                        date: event.date || '',
+                        participantsCount: event.participantsCount || 0,
+                        certificatesCount: event.certificatesCount || 0,
+                        updatedAt: event.updatedAt ? { seconds: Math.floor(event.updatedAt / 1000) } : null,
+                        createdAt: event.createdAt ? { seconds: Math.floor(event.createdAt / 1000) } : null
+                    }));
+                    console.log('✅ Loaded events from Realtime Database list');
+                    
+                    // Cache events data
+                    eventsCache = eventsData;
+                    
+                    // Render events
+                    renderEventsFromCache();
+                    
+                    // Update stats
+                    if (el('totalEvents')) { el('totalEvents').innerText = eventsData.length; }
+                    
+                    return; // Success - no Firestore reads needed
                 }
             } catch (rtdbError) {
-                console.warn('⚠️ Failed to load from Realtime DB, falling back to Firestore:', rtdbError);
+                console.warn('⚠️ Failed to load events list from Realtime DB, falling back to Firestore:', rtdbError);
             }
         }
         
-        // Always load from Firestore to ensure we have all events (including newly created ones)
-        // Merge with Realtime DB data for performance (use Realtime DB for counters if available)
+        // Fallback to Firestore (existing code)
         const snap = await db.collection('events').get();
-        const firestoreEvents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        if (useRealtimeDB && eventsData.length > 0) {
-            // Merge: Use Firestore as source of truth, but prefer Realtime DB counters if available
-            const rtdbMap = new Map(eventsData.map(e => [e.id, e]));
-            eventsData = firestoreEvents.map(fsEvent => {
-                const rtdbEvent = rtdbMap.get(fsEvent.id);
-                if (rtdbEvent) {
-                    // Use Realtime DB counters if available (more up-to-date)
-                    return {
-                        ...fsEvent,
-                        participantsCount: rtdbEvent.participantsCount ?? fsEvent.participantsCount ?? 0,
-                        certificatesCount: rtdbEvent.certificatesCount ?? fsEvent.certificatesCount ?? 0
-                    };
-                }
-                return fsEvent;
-            });
-            console.log('✅ Merged events from Firestore and Realtime Database');
-        } else {
-            // Fallback: Use Firestore only
-            eventsData = firestoreEvents;
-            console.log('✅ Loaded events from Firestore');
-        }
+        eventsData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
         // Sort by updatedAt/createdAt
         eventsData.sort((a, b) => {
@@ -789,13 +765,13 @@ async function loadParticipants(forceRefresh = false) {
     if (!selectedEvent) return; 
     
     const tbody = document.querySelector('#participantsTable tbody'); 
-    const extraFields = (selectedEvent?.data?.participantFields || []);
+            const extraFields = (selectedEvent?.data?.participantFields || []);
     const totalColumns = 4 + extraFields.length;
     
     // Show loading state
-    tbody.innerHTML = `<tr><td colspan="${totalColumns}" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading participants...</div></td></tr>`;
-    
-    try {
+            tbody.innerHTML = `<tr><td colspan="${totalColumns}" class="text-center py-4"><div class="loading-spinner mx-auto"></div><div class="mt-2 text-muted">Loading participants...</div></td></tr>`;
+            
+            try {
         let finalParticipants = [];
         let dataSource = 'unknown';
         
@@ -823,15 +799,54 @@ async function loadParticipants(forceRefresh = false) {
                     
                     if (indexData && Object.keys(indexData).length > 0) {
                         // Convert index to participant-like objects for display
-                        finalParticipants = Object.keys(indexData).map(participantId => ({
-                            id: participantId,
-                            name: indexData[participantId].name || '',
-                            email: indexData[participantId].email || '',
-                            certificateStatus: indexData[participantId].certificateStatus || 'pending',
-                            updatedAt: indexData[participantId].updatedAt ? { seconds: Math.floor(indexData[participantId].updatedAt / 1000) } : null
-                        }));
+                        // Now includes additionalFields from Realtime DB index
+                        finalParticipants = Object.keys(indexData).map(participantId => {
+                            const indexEntry = indexData[participantId];
+                            const participant = {
+                                id: participantId,
+                                name: indexEntry.name || '',
+                                email: indexEntry.email || '',
+                                certificateStatus: indexEntry.certificateStatus || 'pending',
+                                updatedAt: indexEntry.updatedAt ? { seconds: Math.floor(indexEntry.updatedAt / 1000) } : null
+                            };
+                            // Include additionalFields if present in index
+                            if (indexEntry.additionalFields) {
+                                participant.additionalFields = indexEntry.additionalFields;
+                            }
+                            return participant;
+                        });
                         dataSource = 'realtime-index';
-                        console.log(`✅ Loaded ${finalParticipants.length} participants from Realtime DB index`);
+                        
+                        // If custom fields exist but additionalFields are missing, fetch from Firestore
+                        const hasCustomFields = selectedEvent?.data?.participantFields?.length > 0;
+                        const missingAdditionalFields = finalParticipants.filter(p => !p.additionalFields && hasCustomFields);
+                        
+                        
+                        if (missingAdditionalFields.length > 0) {
+                            // Fetch additionalFields for participants missing them
+                            try {
+                                const fetchPromises = missingAdditionalFields.map(async (p) => {
+                                    try {
+                                        const doc = await db.collection('events').doc(selectedEvent.id)
+                                            .collection('participants').doc(p.id).get();
+                                        if (doc.exists) {
+                                            const fullData = doc.data();
+                                            if (fullData.additionalFields) {
+                                                p.additionalFields = fullData.additionalFields;
+                                            }
+                                        }
+                                    } catch (err) {
+                                        console.warn(`Failed to fetch additionalFields for ${p.id}:`, err);
+                                    }
+                                });
+                                await Promise.all(fetchPromises);
+                                console.log(`✅ Fetched additionalFields for ${missingAdditionalFields.length} participants`);
+                            } catch (error) {
+                                console.warn('⚠️ Failed to fetch missing additionalFields:', error);
+                            }
+                        }
+                        
+                        console.log(`✅ Loaded ${finalParticipants.length} participants from Realtime DB index (with additionalFields)`);
                     }
                 } catch (rtdbError) {
                     console.warn('⚠️ Failed to load from Realtime DB index:', rtdbError);
@@ -846,6 +861,8 @@ async function loadParticipants(forceRefresh = false) {
             dataSource = 'firestore';
             console.log(`✅ Loaded ${finalParticipants.length} participants from Firestore`);
         }
+        
+        // additionalFields are now included in Realtime DB index, no need to fetch from Firestore
         
         // Update all caches consistently
         participantsCache = finalParticipants.slice();
@@ -890,8 +907,8 @@ async function loadParticipants(forceRefresh = false) {
             };
             showAlert(sourceMessages[dataSource] || sourceMessages['unknown'], 'success', 2000);
         }
-        
-    } catch (error) {
+                
+            } catch (error) {
         console.error('Error loading participants:', error);
         tbody.innerHTML = `
             <tr><td colspan="${totalColumns}" class="empty-state">
@@ -988,8 +1005,8 @@ async function loadParticipantsFallback() {
     if (!selectedEvent) return;
     
     const tbody = document.querySelector('#participantsTable tbody');
-    const extraFields = (selectedEvent?.data?.participantFields || []);
-    const totalColumns = 4 + extraFields.length;
+                const extraFields = (selectedEvent?.data?.participantFields || []);
+                const totalColumns = 4 + extraFields.length;
             
             try {
         const snap = await db.collection('events').doc(selectedEvent.id).collection('participants').orderBy('name').get(); 
@@ -1105,7 +1122,7 @@ async function openParticipantModal(id) {
                     });
                 } else {
                     showAlert('Participant not found. Please refresh the participants list.', 'warning');
-                    return;
+            return;
                 }
             } catch (error) {
                 console.error('Error fetching participant:', error);
@@ -1251,7 +1268,7 @@ function confirmDeleteParticipant(id, name) {
             if (participantsManager) {
                 await participantsManager.deleteParticipant(id);
             } else {
-                await db.collection('events').doc(selectedEvent.id).collection('participants').doc(id).delete();
+            await db.collection('events').doc(selectedEvent.id).collection('participants').doc(id).delete(); 
             }
             
             // Update local cache
@@ -2168,10 +2185,15 @@ async function toggleLiveUpdates(enable) {
         // Use Realtime DB for change notifications instead of Firestore onSnapshot
         const changesRef = realtimeDb.ref(`events/${selectedEvent.id}/participants/changes`);
         
-        __liveUnsub = changesRef.on('child_added', async (snapshot) => {
+        // Use 'value' listener to watch all changes, then process each child
+        // This is more reliable than 'child_added' which can have issues
+        const processChange = async (snapshot) => {
+            if (!snapshot || !snapshot.exists()) return;
+            
+            const change = snapshot.val();
+            if (!change || !change.participantId) return;
+            
             try {
-                const change = snapshot.val();
-                if (!change || !change.participantId) return;
                 
                 const participantId = change.participantId;
                 let changed = false;
@@ -2241,7 +2263,34 @@ async function toggleLiveUpdates(enable) {
             } catch (error) {
                 console.error('Error processing live update:', error);
             }
+        };
+        
+        // Listen to all changes and process each child
+        const listener = changesRef.on('child_added', (snapshot) => {
+            if (snapshot) {
+                processChange(snapshot);
+            }
         });
+        
+        // Also listen for child_changed and child_removed
+        const listenerChanged = changesRef.on('child_changed', (snapshot) => {
+            if (snapshot) {
+                processChange(snapshot);
+            }
+        });
+        
+        const listenerRemoved = changesRef.on('child_removed', (snapshot) => {
+            if (snapshot) {
+                processChange(snapshot);
+            }
+        });
+        
+        // Store unsubscribe function
+        __liveUnsub = () => {
+            changesRef.off('child_added', listener);
+            changesRef.off('child_changed', listenerChanged);
+            changesRef.off('child_removed', listenerRemoved);
+        };
         
         showAlert('Live updates on (Realtime DB)', 'success', 1500);
     } catch (e) {

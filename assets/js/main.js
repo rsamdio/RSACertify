@@ -21,6 +21,7 @@ class CertificateManager {
     
     // Enhanced search for participant in Firestore with security
     async searchParticipant(collectionName, email) {
+        
         if (!this.db) {
             throw new Error('Firestore not initialized');
         }
@@ -73,71 +74,133 @@ class CertificateManager {
             throw new Error('Invalid collection name');
         }
         
-        try {
-            // Handle subcollection paths (e.g., "events/testEvent/participants")
-            let collectionRef;
-            if (sanitizedCollection.includes('/')) {
+        // Extract eventId from collectionName (format: events/{eventId}/participants)
                 const pathParts = sanitizedCollection.split('/');
-                collectionRef = this.db.collection(pathParts[0]);
-                for (let i = 1; i < pathParts.length; i += 2) {
-                    if (i + 1 < pathParts.length) {
-                        collectionRef = collectionRef.doc(pathParts[i]).collection(pathParts[i + 1]);
-                    }
+        const eventId = pathParts.length >= 2 ? pathParts[1] : null;
+        
+        
+        // Use Realtime DB search (NO Firestore query fallback)
+        if (!eventId || !window.realtimeDb) {
+            // If Realtime DB not available, return null
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/bbb074c5-d2a8-41b7-9897-522a4f20698a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'main.js:81',message:'Realtime DB not available - returning null',data:{eventId,realtimeDbAvailable:!!window.realtimeDb},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            if (window.analyticsUtils) {
+                window.analyticsUtils.logCertificateSearch(
+                    sanitizedCollection,
+                    isValidEmail ? 'email' : 'redeem_code',
+                    email,
+                    false,
+                    'Realtime Database not available'
+                );
+            }
+            return null;
+        }
+        
+        try {
+            const searchRef = window.realtimeDb.ref(`events/${eventId}/search`);
+            const snapshot = await searchRef.once('value');
+            const searchData = snapshot.val();
+            
+            if (!searchData) {
+                // Search index empty or doesn't exist
+                if (window.analyticsUtils) {
+                    window.analyticsUtils.logCertificateSearch(
+                        sanitizedCollection,
+                        isValidEmail ? 'email' : 'redeem_code',
+                        email,
+                        false,
+                        'Certificate not found'
+                    );
                 }
-            } else {
-                collectionRef = this.db.collection(sanitizedCollection);
+                return null;
             }
             
-            // Search for both email addresses and redeem codes in the 'email' field
-            // Since the database field is still 'email' but can contain either emails or codes
-            const searchValue = email.toLowerCase();
+            const searchValue = email.toLowerCase().trim();
             
-            const querySnapshot = await collectionRef
-                .where('email', '==', searchValue)
-                .limit(1)
-                .get();
+            // Find matching participant in search index with strict exact matching
+            // For emails: must match email field exactly
+            // For redeem codes: must match email field exactly (redeem code is stored in email field)
+            const participantId = Object.keys(searchData).find(id => {
+                const entry = searchData[id];
+                if (!entry) return false;
+                
+                // Both email and redeem code are stored in the email field
+                // Match exactly against the email field (case-insensitive)
+                // This ensures "test" does NOT match "test@test.com" and "code" does NOT match "testcode"
+                if (entry.email && entry.email.toLowerCase() === searchValue) {
+                    return true;
+                }
+                
+                // No fallback - if email field is missing, return null
+                // Existing participants will get email field synced when they're updated
+                // This ensures exact matching and prevents false positives
+                
+                return false;
+            });
             
-            if (!querySnapshot.empty) {
-                const doc = querySnapshot.docs[0];
-                const participantData = { id: doc.id, ...doc.data() };
-                
-                const sanitizedData = this.sanitizeParticipantData(participantData);
-                
-                // Log successful certificate search
+            
+            if (!participantId) {
+                // Not found in search index
                 if (window.analyticsUtils) {
                     window.analyticsUtils.logCertificateSearch(
                         sanitizedCollection, 
                         isValidEmail ? 'email' : 'redeem_code', 
                         email, 
-                        true
-                    );
-                    window.analyticsUtils.logCertificateFound(
-                        sanitizedCollection, 
-                        sanitizedData.name, 
-                        isValidEmail ? 'email' : 'redeem_code'
+                        false,
+                        'Certificate not found'
                     );
                 }
-                
-                return sanitizedData;
+                return null;
             }
             
-            // Log unsuccessful certificate search
+            // Fetch full document from Firestore by ID (direct read, not a query)
+            const participantDoc = await this.db
+                .collection('events')
+                .doc(eventId)
+                .collection('participants')
+                .doc(participantId)
+                .get();
+            
+            if (!participantDoc.exists) {
+                // Document doesn't exist (sync issue)
+                if (window.analyticsUtils) {
+                    window.analyticsUtils.logCertificateSearch(
+                        sanitizedCollection, 
+                        isValidEmail ? 'email' : 'redeem_code',
+                        email,
+                        false,
+                        'Participant document not found'
+                    );
+                }
+                return null;
+            }
+            
+            const participantData = { id: participantDoc.id, ...participantDoc.data() };
+            const sanitizedData = this.sanitizeParticipantData(participantData);
+            
+            // Log successful search
             if (window.analyticsUtils) {
                 window.analyticsUtils.logCertificateSearch(
                     sanitizedCollection, 
                     isValidEmail ? 'email' : 'redeem_code', 
                     email, 
-                    false, 
-                    'Certificate not found'
+                    true
+                );
+                window.analyticsUtils.logCertificateFound(
+                    sanitizedCollection,
+                    sanitizedData.name,
+                    isValidEmail ? 'email' : 'redeem_code'
                 );
             }
             
-            return null;
+            return sanitizedData;
             
         } catch (error) {
+            // Realtime DB error - return null (no Firestore fallback)
+            console.error('Realtime DB search error:', error);
             SecurityUtils.logSecurityEvent('search_error', { error: error.message, email, collectionName });
             
-            // Log analytics for search error
             if (window.analyticsUtils) {
                 window.analyticsUtils.logCertificateSearch(
                     sanitizedCollection, 
@@ -154,14 +217,7 @@ class CertificateManager {
                 );
             }
             
-            // Provide more specific error messages
-            if (error.code === 'permission-denied') {
-                throw new Error('Access denied. Please contact the administrator.');
-            } else if (error.code === 'unavailable') {
-                throw new Error('Service temporarily unavailable. Please try again later.');
-            } else {
-                throw new Error('Failed to search for participant. Please try again.');
-            }
+            return null;
         }
     }
     

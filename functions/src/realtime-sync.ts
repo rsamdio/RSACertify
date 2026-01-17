@@ -235,7 +235,8 @@ export const syncParticipantChangesToRealtime = functions.firestore
 
 /**
  * Sync participant metadata index to Realtime Database
- * Maintains lightweight index: name, email, certificateStatus, updatedAt
+ * Maintains index: name, email, certificateStatus, updatedAt, additionalFields
+ * Includes additionalFields to avoid Firestore reads for custom fields display
  */
 export const syncParticipantIndexToRealtime = functions.firestore
     .document('events/{eventId}/participants/{participantId}')
@@ -262,13 +263,18 @@ export const syncParticipantIndexToRealtime = functions.firestore
                     return;
                 }
                 
-                // Sync lightweight index data
-                const indexData = {
+                // Sync index data including additionalFields for custom fields
+                const indexData: any = {
                     name: participantData.name || '',
                     email: participantData.email || '',
                     certificateStatus: participantData.certificateStatus || 'pending',
                     updatedAt: participantData.updatedAt?.toMillis() || Date.now()
                 };
+                
+                // Include additionalFields if they exist (for custom fields display)
+                if (participantData.additionalFields && Object.keys(participantData.additionalFields).length > 0) {
+                    indexData.additionalFields = participantData.additionalFields;
+                }
                 
                 await indexRef.set(indexData);
                 console.log(`Synced participant index to Realtime Database: ${participantId} in event ${eventId}`);
@@ -325,10 +331,11 @@ export const syncParticipantSearchIndex = functions.firestore
                 
                 const searchText = searchParts.join(' ');
                 
-                // Sync search index
+                // Sync search index (include email for exact matching)
                 const searchData = {
                     searchText,
-                    participantId
+                    participantId,
+                    email: participantData.email ? participantData.email.toLowerCase() : ''
                 };
                 
                 await searchRef.set(searchData);
@@ -420,3 +427,59 @@ export const syncParticipantChangeLog = functions.firestore
         }, 'syncParticipantChangeLog')
     );
 
+/**
+ * Sync events list to Realtime Database
+ * Maintains a list of all events for fast admin dashboard loading
+ */
+export const syncEventsListToRealtime = functions.firestore
+    .document('events/{eventId}')
+    .onWrite(
+        withMonitoring(async (change, context) => {
+            const eventId = context.params.eventId;
+            
+            try {
+                const eventsListRef = admin.database().ref('events/list');
+                
+                // Get current list
+                const snapshot = await eventsListRef.once('value');
+                let eventsList: any[] = snapshot.val() || [];
+                
+                if (!change.after.exists) {
+                    // Event was deleted - remove from list
+                    eventsList = eventsList.filter((event: any) => event.id !== eventId);
+                } else {
+                    // Event was created or updated
+                    const eventData = change.after.data();
+                    if (eventData) {
+                        const eventEntry = {
+                            id: eventId,
+                            title: eventData.title || '',
+                            date: eventData.date || '',
+                            participantsCount: eventData.participantsCount || 0,
+                            certificatesCount: eventData.certificatesCount || 0,
+                            updatedAt: eventData.updatedAt?.toMillis() || Date.now(),
+                            createdAt: eventData.createdAt?.toMillis() || Date.now()
+                        };
+                        
+                        // Find and update or add
+                        const index = eventsList.findIndex((e: any) => e.id === eventId);
+                        if (index >= 0) {
+                            eventsList[index] = eventEntry;
+                        } else {
+                            eventsList.push(eventEntry);
+                        }
+                    }
+                }
+                
+                // Sort by updatedAt descending
+                eventsList.sort((a: any, b: any) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                
+                await eventsListRef.set(eventsList);
+                console.log(`Synced events list to Realtime Database (${eventsList.length} events)`);
+                
+            } catch (error) {
+                console.error(`Error syncing events list to Realtime Database:`, error);
+                // Don't throw - this is a non-critical sync operation
+            }
+        }, 'syncEventsListToRealtime')
+    );
