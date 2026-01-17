@@ -53,16 +53,11 @@ function initializeFirebaseApp() {
     try {
         if (firebase.analytics && firebase.analytics.isSupported && firebase.analytics.isSupported()) {
             analytics = firebase.analytics();
-            // Set analytics user properties
             analytics.setAnalyticsCollectionEnabled(true);
-        } else {
-            console.warn('Analytics not supported in this environment (IndexedDB unavailable)');
         }
     } catch (analyticsError) {
-        console.warn('Analytics initialization failed:', analyticsError);
+        // Analytics initialization failed
     }
-    
-    console.log('✅ Realtime Database initialized');
             
             // Set up auth state listener
             auth.onAuthStateChanged((user) => {

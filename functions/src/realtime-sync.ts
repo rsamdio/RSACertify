@@ -1,4 +1,4 @@
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { withMonitoring } from './monitoring';
 
@@ -20,7 +20,6 @@ export const syncEventMetadataToRealtime = functions.firestore
                     // Remove the entire event path to clean up all related data
                     const eventPathRef = admin.database().ref(`events/${eventId}`);
                     await eventPathRef.remove();
-                    console.log(`Removed entire event path from Realtime Database for event ${eventId}`);
                     return;
                 }
                 
@@ -28,7 +27,6 @@ export const syncEventMetadataToRealtime = functions.firestore
                 const data = change.after.data();
                 
                 if (!data) {
-                    console.warn(`Event data is undefined for ${eventId}`);
                     return;
                 }
                 
@@ -43,7 +41,6 @@ export const syncEventMetadataToRealtime = functions.firestore
                 };
                 
                 await realtimeRef.set(metadata);
-                console.log(`Synced event metadata to Realtime Database for event ${eventId}`);
                 
             } catch (error) {
                 console.error(`Error syncing event metadata to Realtime Database for event ${eventId}:`, error);
@@ -96,7 +93,6 @@ export const syncAdminsToRealtime = functions.firestore
                 adminsList.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
                 
                 await adminsListRef.set(adminsList);
-                console.log(`Synced admins list to Realtime Database (${adminsList.length} admins)`);
                 
             } catch (error) {
                 console.error(`Error syncing admins list to Realtime Database:`, error);
@@ -149,7 +145,6 @@ export const syncInvitesToRealtime = functions.firestore
                 invitesList.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
                 
                 await invitesListRef.set(invitesList);
-                console.log(`Synced invites list to Realtime Database (${invitesList.length} invites)`);
                 
             } catch (error) {
                 console.error(`Error syncing invites list to Realtime Database:`, error);
@@ -224,7 +219,6 @@ export const syncParticipantChangesToRealtime = functions.firestore
                 changeData.type = changeType;
                 
                 await changesRef.set(changeData);
-                console.log(`Synced participant change to Realtime Database: ${changeType} for ${participantId} in event ${eventId}`);
                 
             } catch (error) {
                 console.error(`Error syncing participant change to Realtime Database for ${participantId} in event ${eventId}:`, error);
@@ -252,14 +246,12 @@ export const syncParticipantIndexToRealtime = functions.firestore
                 if (!change.after.exists) {
                     // Participant was deleted - remove from index
                     await indexRef.remove();
-                    console.log(`Removed participant from index: ${participantId} in event ${eventId}`);
                     return;
                 }
                 
                 // Participant was created or updated
                 const participantData = change.after.data();
                 if (!participantData) {
-                    console.warn(`Participant data is undefined for ${participantId} in event ${eventId}`);
                     return;
                 }
                 
@@ -277,7 +269,6 @@ export const syncParticipantIndexToRealtime = functions.firestore
                 }
                 
                 await indexRef.set(indexData);
-                console.log(`Synced participant index to Realtime Database: ${participantId} in event ${eventId}`);
                 
             } catch (error) {
                 console.error(`Error syncing participant index to Realtime Database for ${participantId} in event ${eventId}:`, error);
@@ -304,14 +295,12 @@ export const syncParticipantSearchIndex = functions.firestore
                 if (!change.after.exists) {
                     // Participant was deleted - remove from search index
                     await searchRef.remove();
-                    console.log(`Removed participant from search index: ${participantId} in event ${eventId}`);
                     return;
                 }
                 
                 // Participant was created or updated
                 const participantData = change.after.data();
                 if (!participantData) {
-                    console.warn(`Participant data is undefined for ${participantId} in event ${eventId}`);
                     return;
                 }
                 
@@ -339,7 +328,6 @@ export const syncParticipantSearchIndex = functions.firestore
                 };
                 
                 await searchRef.set(searchData);
-                console.log(`Synced participant search index to Realtime Database: ${participantId} in event ${eventId}`);
                 
             } catch (error) {
                 console.error(`Error syncing participant search index to Realtime Database for ${participantId} in event ${eventId}:`, error);
@@ -415,10 +403,6 @@ export const syncParticipantChangeLog = functions.firestore
                 };
                 
                 await changeLogRef.set(logEntry);
-                console.log(`Logged ${changes.length} changes for participant ${participantId} in event ${eventId}`);
-                
-                // Limit change log to last 1000 entries per event (optional cleanup)
-                // This could be done periodically, not on every change
                 
             } catch (error) {
                 console.error(`Error logging participant changes for ${participantId} in event ${eventId}:`, error);
@@ -475,7 +459,6 @@ export const syncEventsListToRealtime = functions.firestore
                 eventsList.sort((a: any, b: any) => (b.updatedAt || 0) - (a.updatedAt || 0));
                 
                 await eventsListRef.set(eventsList);
-                console.log(`Synced events list to Realtime Database (${eventsList.length} events)`);
                 
             } catch (error) {
                 console.error(`Error syncing events list to Realtime Database:`, error);

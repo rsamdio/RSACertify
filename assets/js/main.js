@@ -81,10 +81,6 @@ class CertificateManager {
         
         // Use Realtime DB search (NO Firestore query fallback)
         if (!eventId || !window.realtimeDb) {
-            // If Realtime DB not available, return null
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/bbb074c5-d2a8-41b7-9897-522a4f20698a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'main.js:81',message:'Realtime DB not available - returning null',data:{eventId,realtimeDbAvailable:!!window.realtimeDb},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
             if (window.analyticsUtils) {
                 window.analyticsUtils.logCertificateSearch(
                     sanitizedCollection,
@@ -197,8 +193,6 @@ class CertificateManager {
             return sanitizedData;
             
         } catch (error) {
-            // Realtime DB error - return null (no Firestore fallback)
-            console.error('Realtime DB search error:', error);
             SecurityUtils.logSecurityEvent('search_error', { error: error.message, email, collectionName });
             
             if (window.analyticsUtils) {

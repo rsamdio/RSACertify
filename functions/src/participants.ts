@@ -1,4 +1,4 @@
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { withMonitoring } from './monitoring';
 
@@ -8,7 +8,7 @@ import { withMonitoring } from './monitoring';
 export const searchParticipants = functions.https.onCall(
     withMonitoring(async (data, context) => {
     // Verify authentication
-    if (!context.auth) {
+    if (!context || !context.auth) {
         throw new functions.https.HttpsError(
             'unauthenticated',
             'Must be authenticated to search participants'
@@ -101,7 +101,7 @@ export const searchParticipants = functions.https.onCall(
 export const bulkUploadParticipants = functions.https.onCall(
     withMonitoring(async (data, context) => {
     // Verify authentication
-    if (!context.auth) {
+    if (!context || !context.auth) {
         throw new functions.https.HttpsError(
             'unauthenticated',
             'Must be authenticated to upload participants'

@@ -13,43 +13,35 @@ const firebaseConfig = {
 // Initialize Firebase
 let auth, db, realtimeDb;
 try {
-    // Check if Firebase is already initialized
     if (firebase.apps.length === 0) {
-firebase.initializeApp(firebaseConfig);
-        console.log('✅ Firebase initialized successfully');
-    } else {
-        console.log('✅ Firebase already initialized');
+        firebase.initializeApp(firebaseConfig);
     }
     
     auth = firebase.auth();
     db = firebase.firestore();
     realtimeDb = firebase.database();
     
-    // Configure Firestore settings
     db.settings({
         cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
     });
-    
-    console.log('✅ Firebase auth, firestore, and realtime database ready');
 } catch (error) {
-    console.error('❌ Firebase initialization failed:', error);
     throw error;
 }
 
 // Global variables
 let currentUser = null;
 let selectedEvent = null;
-let participantsManager = null; // New optimized participants manager
-let participantsCache = []; // Fallback cache for participants
-let participantsSortKey = 'name'; // Sort key for participants
-let participantsSortDir = 'asc'; // Sort direction for participants
+let participantsManager = null;
+let participantsCache = [];
+let participantsSortKey = 'name';
+let participantsSortDir = 'asc';
 let eventsCache = [];
 let adminsCache = [];
 let invitesCache = [];
 let bulkRows = [];
 let existingByEmail = {};
 let adminsLoaded = false;
-let realtimeCounterListeners = {}; // Track Realtime Database listeners
+let realtimeCounterListeners = {};
 
 // Utility functions
 function el(id) { return document.getElementById(id); }
@@ -118,13 +110,12 @@ function showAlert(message, type = 'info', duration = 5000) {
         }
         
         const provider = new firebase.auth.GoogleAuthProvider();
-                provider.addScope('email');
+        provider.addScope('email');
                 
         try {
             showAlert('Opening Google sign-in popup...', 'info', 2000);
             await auth.signInWithPopup(provider);
-                } catch (popupError) {
-            console.error('Sign-in popup error:', popupError);
+        } catch (popupError) {
             if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
                 showAlert('Popup blocked. Redirecting to Google sign-in...', 'warning', 3000);
             } else {
@@ -142,9 +133,7 @@ window.signIn = signIn;
 
 function signOut() { 
     if (auth) {
-    auth.signOut(); 
-    } else {
-        console.error('Firebase auth not available for sign out');
+        auth.signOut(); 
     }
 }
 
@@ -153,65 +142,47 @@ window.signOut = signOut;
 
 // Setup authentication
 if (auth) {
-auth.onAuthStateChanged(async (user) => {
-        console.log('🔐 Auth state changed:', user ? `Signed in as ${user.email}` : 'Signed out');
-    currentUser = user;
-    if (!user) { 
-        showGate('Sign in to continue.'); 
-        return;
-    }
-    
-    try {
-            console.log('🔍 Verifying admin access for:', user.email);
-        el('signinBtn').classList.add('d-none');
-        el('signoutBtn').classList.remove('d-none');
-        
-        // Optimized admin verification with single query approach
-        const userEmail = (user.email || '').toLowerCase();
-        
-        // Single query to get admin status
-            console.log('🔍 Checking admin document for UID:', user.uid);
-        const adminDoc = await db.collection('admins').doc(user.uid).get();
-        
-        if (!adminDoc.exists) {
-                console.log('❌ Admin document not found, checking invites...');
-            // Check for invite and auto-promote if found
-            const inviteDoc = await db.collection('invites').doc(userEmail).get();
-            if (inviteDoc.exists) {
-                    console.log('✅ Invite found, promoting to admin...');
-                // Auto-promote from invite to admin
-                await db.collection('admins').doc(user.uid).set({ 
-                    email: userEmail, 
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp() 
-                }, { merge: true });
-                await db.collection('invites').doc(userEmail).delete().catch(() => {});
-                
-                // Update caches
-                adminsCache.push({ id: user.uid, email: userEmail, createdAt: new Date() });
-                invitesCache = invitesCache.filter(invite => invite.email !== userEmail);
-                    console.log('✅ User promoted to admin successfully');
-            } else {
-                    console.log('❌ No invite found, access denied');
-                showGate('Access denied. Ask an existing admin to invite you.'); 
-                await auth.signOut().catch(() => {}); 
-                return; 
-            }
-            } else {
-                console.log('✅ Admin access confirmed');
+    auth.onAuthStateChanged(async (user) => {
+        currentUser = user;
+        if (!user) { 
+            showGate('Sign in to continue.'); 
+            return;
         }
         
-            console.log('🚀 Showing admin dashboard...');
-        showApp();
-        loadEvents();
-        
-    } catch (error) {
-            console.error('❌ Error verifying admin access:', error);
-        showGate('Error verifying admin access: ' + error.message);
-        await auth.signOut().catch(() => {});
-    }
-});
+        try {
+            el('signinBtn').classList.add('d-none');
+            el('signoutBtn').classList.remove('d-none');
+            
+            const userEmail = (user.email || '').toLowerCase();
+            const adminDoc = await db.collection('admins').doc(user.uid).get();
+            
+            if (!adminDoc.exists) {
+                const inviteDoc = await db.collection('invites').doc(userEmail).get();
+                if (inviteDoc.exists) {
+                    await db.collection('admins').doc(user.uid).set({ 
+                        email: userEmail, 
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+                    }, { merge: true });
+                    await db.collection('invites').doc(userEmail).delete().catch(() => {});
+                    
+                    adminsCache.push({ id: user.uid, email: userEmail, createdAt: new Date() });
+                    invitesCache = invitesCache.filter(invite => invite.email !== userEmail);
+                } else {
+                    showGate('Access denied. Ask an existing admin to invite you.'); 
+                    await auth.signOut().catch(() => {}); 
+                    return; 
+                }
+            }
+            
+            showApp();
+            loadEvents();
+            
+        } catch (error) {
+            showGate('Error verifying admin access: ' + error.message);
+            await auth.signOut().catch(() => {});
+        }
+    });
 } else {
-    console.error('❌ Firebase auth not available');
     showGate('Firebase authentication not available. Please refresh the page.');
 }
 
@@ -234,55 +205,38 @@ function switchTab(name) {
 
 // Events Management
 async function refreshCertificateCount(eventId) {
-    console.log('Refreshing certificate count for event:', eventId);
-    
     try {
-        // Find the refresh button that was clicked
         const refreshBtn = document.querySelector(`button[onclick="refreshCertificateCount('${eventId}')"]`);
         if (!refreshBtn) {
-            console.error('Refresh button not found for event:', eventId);
             showAlert('Refresh button not found', 'danger', 3000);
             return;
         }
         
-        // Find the target row and badge
         const targetRow = refreshBtn.closest('tr');
         if (!targetRow) {
-            console.error('Target row not found');
             showAlert('Target row not found', 'danger', 3000);
             return;
         }
         
-        // Find the certificate count badge (should be the second badge in the row)
         const badges = targetRow.querySelectorAll('.badge');
-        const targetBadge = badges[1]; // Second badge should be the certificate count
+        const targetBadge = badges[1];
         
         if (!targetBadge) {
-            console.error('Certificate count badge not found');
             showAlert('Certificate count badge not found', 'danger', 3000);
             return;
         }
         
-        console.log('Found target badge:', targetBadge);
-        
-        // Show loading state
         const originalText = targetBadge.textContent;
         targetBadge.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         
-        // Read certificate count from event document (maintained by Cloud Functions)
-        console.log('Reading certificate count from event document...');
         const eventDoc = await db.collection('events').doc(eventId).get();
         const certificatesCount = eventDoc.data()?.certificatesCount || 0;
         
-        console.log('Certificate count result:', certificatesCount);
-        
-        // Update the badge
         targetBadge.textContent = certificatesCount;
         
         showAlert(`Certificate count refreshed: ${certificatesCount} issued`, 'success', 2000);
         
     } catch (error) {
-        console.error('Error refreshing certificate count:', error);
         showAlert('Failed to refresh certificate count: ' + error.message, 'danger', 3000);
         
         // Restore original text on error
@@ -323,7 +277,6 @@ async function loadEvents() {
                         updatedAt: event.updatedAt ? { seconds: Math.floor(event.updatedAt / 1000) } : null,
                         createdAt: event.createdAt ? { seconds: Math.floor(event.createdAt / 1000) } : null
                     }));
-                    console.log('✅ Loaded events from Realtime Database list');
                     
                     // Cache events data
                     eventsCache = eventsData;
@@ -337,7 +290,6 @@ async function loadEvents() {
                     return; // Success - no Firestore reads needed
                 }
             } catch (rtdbError) {
-                console.warn('⚠️ Failed to load events list from Realtime DB, falling back to Firestore:', rtdbError);
             }
         }
         
@@ -441,15 +393,12 @@ async function loadEvents() {
  */
 function setupRealtimeCountersForAllEvents(events) {
     if (!realtimeDb) {
-        console.warn('Realtime Database not initialized, skipping counter listeners');
         return;
     }
     
-    // Clean up existing listeners
     Object.values(realtimeCounterListeners).forEach(off => off());
     realtimeCounterListeners = {};
     
-    // Setup listeners for each event
     events.forEach(event => {
         const eventId = event.id || event.doc?.id;
         if (!eventId) return;
@@ -465,8 +414,6 @@ function setupRealtimeCountersForAllEvents(events) {
         
         realtimeCounterListeners[eventId] = () => countersRef.off('value', listener);
     });
-    
-    console.log(`Setup real-time counter listeners for ${events.length} events`);
 }
 
 /**
@@ -607,10 +554,8 @@ async function saveEvent() {
         eventModal.hide(); 
         showAlert('Event saved successfully!', 'success');
         
-        // Reload events to ensure consistency (Cloud Functions will sync to Realtime DB)
         await loadEvents();
     } catch (e) {
-        console.error('Error saving event:', e);
         showAlert('Failed: ' + e.message, 'danger');
     }
 }
@@ -625,10 +570,9 @@ function confirmDeleteEvent(id, title) {
             
             showAlert('Event deleted successfully!', 'success');
             
-        } catch (error) {
-            console.error('Error deleting event:', error);
-            showAlert('Failed to delete event: ' + error.message, 'danger');
-        }
+            } catch (error) {
+                showAlert('Failed to delete event: ' + error.message, 'danger');
+            }
     });
 }
 
@@ -651,7 +595,6 @@ async function deleteEventCascade(eventId) {
             participantsManager = new ParticipantsManager();
             await participantsManager.initialize(eventId);
         } else {
-            console.warn('ParticipantsManager not available, using fallback');
             participantsManager = null;
         }
         
@@ -783,10 +726,9 @@ async function loadParticipants(forceRefresh = false) {
                 if (cached?.rows?.length > 0) {
                     finalParticipants = cached.rows.slice();
                     dataSource = 'indexeddb';
-                    console.log(`✅ Loaded ${finalParticipants.length} participants from IndexedDB`);
                 }
             } catch (idbError) {
-                console.warn('IndexedDB load failed:', idbError);
+                // IndexedDB unavailable, continue to next source
             }
             
             // 2) Try to load from Realtime DB index (free reads, lightweight)
@@ -836,20 +778,17 @@ async function loadParticipants(forceRefresh = false) {
                                             }
                                         }
                                     } catch (err) {
-                                        console.warn(`Failed to fetch additionalFields for ${p.id}:`, err);
+                                        // Failed to fetch additionalFields for this participant
                                     }
                                 });
                                 await Promise.all(fetchPromises);
-                                console.log(`✅ Fetched additionalFields for ${missingAdditionalFields.length} participants`);
                             } catch (error) {
-                                console.warn('⚠️ Failed to fetch missing additionalFields:', error);
+                                // Failed to fetch missing additionalFields
                             }
                         }
-                        
-                        console.log(`✅ Loaded ${finalParticipants.length} participants from Realtime DB index (with additionalFields)`);
                     }
                 } catch (rtdbError) {
-                    console.warn('⚠️ Failed to load from Realtime DB index:', rtdbError);
+                    // Failed to load from Realtime DB index, continue to fallback
                 }
             }
         }
@@ -859,7 +798,6 @@ async function loadParticipants(forceRefresh = false) {
             const all = await fetchAllParticipantsLocal();
             finalParticipants = all;
             dataSource = 'firestore';
-            console.log(`✅ Loaded ${finalParticipants.length} participants from Firestore`);
         }
         
         // additionalFields are now included in Realtime DB index, no need to fetch from Firestore
@@ -908,16 +846,15 @@ async function loadParticipants(forceRefresh = false) {
             showAlert(sourceMessages[dataSource] || sourceMessages['unknown'], 'success', 2000);
         }
                 
-            } catch (error) {
-        console.error('Error loading participants:', error);
-        tbody.innerHTML = `
-            <tr><td colspan="${totalColumns}" class="empty-state">
-                <i class="fa-solid fa-exclamation-triangle text-danger"></i>
-                <h6 class="mt-2">Error loading participants</h6>
-                <p class="mb-0 text-danger">${error.message}</p>
-            </td></tr>`;
-        showAlert('Failed to load participants: ' + error.message, 'danger');
-    }
+        } catch (error) {
+            tbody.innerHTML = `
+                <tr><td colspan="${totalColumns}" class="empty-state">
+                    <i class="fa-solid fa-exclamation-triangle text-danger"></i>
+                    <h6 class="mt-2">Error loading participants</h6>
+                    <p class="mb-0 text-danger">${error.message}</p>
+                </td></tr>`;
+            showAlert('Failed to load participants: ' + error.message, 'danger');
+        }
 }
 
 // Fetch all participants for the event in chunks and populate caches
@@ -957,9 +894,9 @@ async function fetchAllParticipantsLocal() {
     // Persist to IndexedDB (best-effort)
     try {
         await idbSaveParticipants(selectedEvent.id, all);
-    } catch (e) {
-        console.warn('IndexedDB save failed:', e);
-    }
+            } catch (e) {
+                // IndexedDB save failed, continue without caching
+            }
     return all;
 }
 
@@ -1020,7 +957,6 @@ async function loadParticipantsFallback() {
         // No need to manually update counts here
                 
             } catch (error) {
-        console.error('Fallback loading error:', error);
                 tbody.innerHTML = `
                     <tr><td colspan="${totalColumns}" class="empty-state">
                         <i class="fa-solid fa-exclamation-triangle text-danger"></i>
@@ -1079,14 +1015,13 @@ async function openParticipantModal(id) {
                 if (doc.exists) {
                     const fullData = doc.data();
                     participant = { id: doc.id, ...fullData };
-                    // Update cache with full data
                     const index = participantsCache.findIndex(p => p.id === id);
                     if (index !== -1) {
                         participantsCache[index] = participant;
                     }
                 }
             } catch (error) {
-                console.warn('Failed to fetch full participant data:', error);
+                // Failed to fetch full participant data
             }
         }
         
@@ -1125,7 +1060,6 @@ async function openParticipantModal(id) {
             return;
                 }
             } catch (error) {
-                console.error('Error fetching participant:', error);
                 showAlert('Failed to load participant data. Please refresh the participants list.', 'danger');
                 return;
             }
@@ -1285,10 +1219,9 @@ function confirmDeleteParticipant(id, name) {
             
             showAlert('Participant deleted successfully!', 'success');
             
-        } catch (error) {
-            console.error('Error deleting participant:', error);
-            showAlert('Failed to delete participant: ' + error.message, 'danger');
-        }
+            } catch (error) {
+                showAlert('Failed to delete participant: ' + error.message, 'danger');
+            }
     });
 }
 
@@ -1496,10 +1429,9 @@ async function refreshParticipantStatus(participantId) {
         }
         
         showAlert('Participant status refreshed', 'success', 1500);
-    } catch (error) {
-        console.error('Failed to refresh participant status:', error);
-        showAlert('Failed to refresh status', 'danger', 2000);
-    }
+        } catch (error) {
+            showAlert('Failed to refresh status', 'danger', 2000);
+        }
 }
 
 // Participants Table Head Rendering
@@ -1886,7 +1818,6 @@ function setupSearchWithDebounce() {
     try {
         const searchInput = document.getElementById('participantsSearch');
         if (!searchInput) {
-            console.log('Search input not found, skipping debounce setup');
             return;
         }
 
@@ -1952,13 +1883,11 @@ async function performSearch(query) {
                         
                         if (searchResults.length > 0) {
                             renderSearchResults(searchResults);
-                            console.log('✅ Search results from Realtime DB index');
                             return;
                         }
                     }
                 }
             } catch (rtdbError) {
-                console.warn('⚠️ Realtime DB search failed, falling back:', rtdbError);
             }
         }
 
@@ -2251,7 +2180,7 @@ async function toggleLiveUpdates(enable) {
                             }
                         }
                     } catch (fetchError) {
-                        console.warn('Failed to fetch participant document:', fetchError);
+                        // Failed to fetch participant document
                     }
                 }
                 
@@ -2261,7 +2190,7 @@ async function toggleLiveUpdates(enable) {
                     el('participantsCount').innerText = participantsCache.length;
                 }
             } catch (error) {
-                console.error('Error processing live update:', error);
+                // Error processing live update
             }
         };
         
@@ -2467,10 +2396,9 @@ async function runMigration() {
         } else {
             showAlert('Migration failed: ' + (result.data.message || 'Unknown error'), 'danger');
         }
-    } catch (error) {
-        console.error('Migration error:', error);
-        showAlert('Migration failed: ' + error.message, 'danger');
-    }
+        } catch (error) {
+            showAlert('Migration failed: ' + error.message, 'danger');
+        }
 }
 
 // Make functions globally available
@@ -2482,7 +2410,6 @@ window.runMigration = runMigration; // Make migration function available globall
 
 // Ensure gate screen is shown initially
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔍 DOM loaded, checking initial state...');
     const gateScreen = document.getElementById('gateScreen');
     const appContainer = document.getElementById('appContainer');
     
@@ -2490,7 +2417,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show gate screen initially
         gateScreen.style.display = 'block';
         appContainer.style.display = 'none';
-        console.log('✅ Gate screen shown initially');
     }
 });
 
@@ -2517,19 +2443,16 @@ async function loadAdmins() {
                             email: admin.email,
                             createdAt: admin.createdAt ? { seconds: Math.floor(admin.createdAt / 1000) } : null
                         }));
-                        console.log('✅ Loaded admins from Realtime Database');
                         renderAdminsFromCache();
                         return;
                     }
                 } catch (rtdbError) {
-                    console.warn('⚠️ Failed to load admins from Realtime DB, falling back to Firestore:', rtdbError);
+                    // Fallback to Firestore
                 }
             }
             
-            // Fallback to Firestore
             const snap = await db.collection('admins').orderBy('createdAt', 'desc').get();
             adminsCache = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            console.log('✅ Loaded admins from Firestore');
         } catch (error) {
             tbody.innerHTML = `
                 <tr><td colspan="3" class="empty-state">
@@ -2611,19 +2534,16 @@ async function loadInvites() {
                             email: invite.email,
                             createdAt: invite.createdAt ? { seconds: Math.floor(invite.createdAt / 1000) } : null
                         }));
-                        console.log('✅ Loaded invites from Realtime Database');
                         renderInvitesFromCache();
                         return;
                     }
                 } catch (rtdbError) {
-                    console.warn('⚠️ Failed to load invites from Realtime DB, falling back to Firestore:', rtdbError);
                 }
             }
             
             // Fallback to Firestore
             const snap = await db.collection('invites').orderBy('createdAt', 'desc').get();
             invitesCache = snap.docs.map(doc => ({ id: doc.id, email: doc.id, ...doc.data() }));
-            console.log('✅ Loaded invites from Firestore');
         } catch (error) {
             tbody.innerHTML = `
                 <tr><td colspan="3" class="empty-state">

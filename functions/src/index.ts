@@ -1,4 +1,4 @@
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 
 admin.initializeApp();
@@ -19,7 +19,6 @@ export const onParticipantCreate = functions.firestore
                 participantsCount: admin.firestore.FieldValue.increment(1),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
             });
-            console.log(`Incremented participantsCount for event ${eventId}`);
         } catch (error) {
             console.error(`Error incrementing participantsCount for event ${eventId}:`, error);
             throw error;
@@ -40,7 +39,6 @@ export const onParticipantDelete = functions.firestore
                 participantsCount: admin.firestore.FieldValue.increment(-1),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
             });
-            console.log(`Decremented participantsCount for event ${eventId}`);
         } catch (error) {
             console.error(`Error decrementing participantsCount for event ${eventId}:`, error);
             throw error;
@@ -74,15 +72,12 @@ export const onCertificateDownload = functions.firestore
                     certificatesCount: admin.firestore.FieldValue.increment(1),
                     updatedAt: admin.firestore.FieldValue.serverTimestamp()
                 });
-                console.log(`Incremented certificatesCount for event ${eventId}`);
             }
-            // Status changed from 'downloaded' to something else
             else if (beforeStatus === 'downloaded' && afterStatus !== 'downloaded') {
                 await eventRef.update({
                     certificatesCount: admin.firestore.FieldValue.increment(-1),
                     updatedAt: admin.firestore.FieldValue.serverTimestamp()
                 });
-                console.log(`Decremented certificatesCount for event ${eventId}`);
             }
         } catch (error) {
             console.error(`Error updating certificatesCount for event ${eventId}:`, error);
@@ -109,7 +104,6 @@ export const syncCountersToRealtime = functions.firestore
                 certificates: data.certificatesCount || 0,
                 updatedAt: Date.now()
             });
-            console.log(`Synced counters to Realtime Database for event ${eventId}`);
         } catch (error) {
             console.error(`Error syncing counters to Realtime Database for event ${eventId}:`, error);
             // Don't throw - this is a non-critical sync operation

@@ -1,4 +1,4 @@
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { statisticsCache, eventConfigCache, getStatisticsCacheKey, getEventConfigCacheKey } from './cache';
 import { withMonitoring } from './monitoring';
@@ -9,7 +9,7 @@ import { withMonitoring } from './monitoring';
 export const getEventStatistics = functions.https.onCall(
     withMonitoring(async (data, context) => {
     // Verify authentication
-    if (!context.auth) {
+    if (!context || !context.auth) {
         throw new functions.https.HttpsError(
             'unauthenticated',
             'Must be authenticated to get event statistics'
@@ -152,7 +152,7 @@ export const getEventConfig = functions.https.onCall(
 export const migrateCounters = functions.https.onCall(
     withMonitoring(async (data, context) => {
         // Verify authentication
-        if (!context.auth) {
+        if (!context || !context.auth) {
             throw new functions.https.HttpsError(
                 'unauthenticated',
                 'Must be authenticated to migrate counters'
