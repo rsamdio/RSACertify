@@ -365,12 +365,11 @@ class CertificateManager {
         }
     }
     
-    // Enhanced participant data upload
+    // Legacy: uses eventSlug + '_participants' (top-level collection). RSACertify event pages use events/{id}/participants.
     async uploadParticipants(eventSlug, participants) {
         if (!this.db) {
             throw new Error('Firestore not initialized');
         }
-        
         try {
             const batch = this.db.batch();
             const collectionRef = this.db.collection(eventSlug + '_participants');
@@ -403,12 +402,11 @@ class CertificateManager {
         }
     }
     
-    // Enhanced event statistics
+    // Legacy: uses eventSlug + '_participants'. RSACertify uses events/{id}/participants; stats come from event doc counters or getEventStatistics callable.
     async getEventStats(eventSlug) {
         if (!this.db) {
             throw new Error('Firestore not initialized');
         }
-        
         try {
             const collectionRef = this.db.collection(eventSlug + '_participants');
             const snapshot = await collectionRef.get();
@@ -444,12 +442,11 @@ class CertificateManager {
         }
     }
     
-    // Enhanced recent downloads
+    // Legacy: uses 'certificates' and eventSlug + '_participants'. Not used by RSACertify event pages.
     async getRecentDownloads(limit = 10) {
         if (!this.db) {
             throw new Error('Firestore not initialized');
         }
-        
         try {
             const snapshot = await this.db.collection('certificates')
                 .orderBy('generatedAt', 'desc')

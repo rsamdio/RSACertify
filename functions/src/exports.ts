@@ -1,42 +1,14 @@
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { withMonitoring } from './monitoring';
+import { verifyAdmin } from './auth';
 
 /**
  * Export participants to CSV with Cloud Storage upload
  */
 export const exportParticipantsCSV = functions.https.onCall(
     withMonitoring(async (data, context) => {
-    // Verify authentication
-    if (!context || !context.auth) {
-        throw new functions.https.HttpsError(
-            'unauthenticated',
-            'Must be authenticated to export participants'
-        );
-    }
-    
-    // Verify admin access
-    try {
-        const adminDoc = await admin.firestore()
-            .doc(`admins/${context.auth.uid}`)
-            .get();
-        
-        if (!adminDoc.exists) {
-            throw new functions.https.HttpsError(
-                'permission-denied',
-                'Admin access required'
-            );
-        }
-    } catch (error) {
-        if (error instanceof functions.https.HttpsError) {
-            throw error;
-        }
-        throw new functions.https.HttpsError(
-            'internal',
-            'Error verifying admin access'
-        );
-    }
-    
+    await verifyAdmin(context);
     const { eventId } = data;
     
     if (!eventId) {
@@ -117,7 +89,7 @@ export const exportParticipantsCSV = functions.https.onCall(
                 cacheControl: 'public, max-age=3600',
                 metadata: {
                     eventId: eventId,
-                    exportedBy: context.auth.uid,
+                    exportedBy: context.auth!.uid,
                     exportedAt: new Date().toISOString()
                 }
             }

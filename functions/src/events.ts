@@ -2,42 +2,14 @@ import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { statisticsCache, eventConfigCache, getStatisticsCacheKey, getEventConfigCacheKey } from './cache';
 import { withMonitoring } from './monitoring';
+import { verifyAdmin } from './auth';
 
 /**
- * Get event statistics with caching
+ * Get event statistics with caching (uses event doc counters, no participants collection read)
  */
 export const getEventStatistics = functions.https.onCall(
     withMonitoring(async (data, context) => {
-    // Verify authentication
-    if (!context || !context.auth) {
-        throw new functions.https.HttpsError(
-            'unauthenticated',
-            'Must be authenticated to get event statistics'
-        );
-    }
-    
-    // Verify admin access
-    try {
-        const adminDoc = await admin.firestore()
-            .doc(`admins/${context.auth.uid}`)
-            .get();
-        
-        if (!adminDoc.exists) {
-            throw new functions.https.HttpsError(
-                'permission-denied',
-                'Admin access required'
-            );
-        }
-    } catch (error) {
-        if (error instanceof functions.https.HttpsError) {
-            throw error;
-        }
-        throw new functions.https.HttpsError(
-            'internal',
-            'Error verifying admin access'
-        );
-    }
-    
+    await verifyAdmin(context);
     const { eventId } = data;
     
     if (!eventId) {
@@ -55,31 +27,39 @@ export const getEventStatistics = functions.https.onCall(
     }
     
     try {
-        // Fetch from Firestore
-        const participantsRef = admin.firestore()
-            .collection(`events/${eventId}/participants`);
+        const eventDoc = await admin.firestore()
+            .doc(`events/${eventId}`)
+            .get();
         
-        const snapshot = await participantsRef.get();
+        if (!eventDoc.exists) {
+            throw new functions.https.HttpsError(
+                'not-found',
+                'Event not found'
+            );
+        }
+        
+        const data = eventDoc.data();
+        const total = data?.participantsCount ?? 0;
+        const downloaded = data?.certificatesCount ?? 0;
+        const pending = Math.max(0, total - downloaded);
+        const downloadRate = total > 0
+            ? ((downloaded / total) * 100).toFixed(1)
+            : '0.0';
         
         const stats = {
-            total: snapshot.size,
-            downloaded: snapshot.docs.filter(d => 
-                d.data().certificateStatus === 'downloaded'
-            ).length,
-            pending: snapshot.docs.filter(d => 
-                d.data().certificateStatus === 'pending'
-            ).length,
-            downloadRate: snapshot.size > 0 
-                ? (snapshot.docs.filter(d => d.data().certificateStatus === 'downloaded').length / snapshot.size * 100).toFixed(1)
-                : '0.0'
+            total,
+            downloaded,
+            pending,
+            downloadRate
         };
         
-        // Cache the result
         statisticsCache.set(cacheKey, stats);
-        
         return stats;
         
     } catch (error) {
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
         console.error('Error getting event statistics:', error);
         throw new functions.https.HttpsError(
             'internal',
@@ -151,36 +131,7 @@ export const getEventConfig = functions.https.onCall(
  */
 export const migrateCounters = functions.https.onCall(
     withMonitoring(async (data, context) => {
-        // Verify authentication
-        if (!context || !context.auth) {
-            throw new functions.https.HttpsError(
-                'unauthenticated',
-                'Must be authenticated to migrate counters'
-            );
-        }
-        
-        // Verify admin access
-        try {
-            const adminDoc = await admin.firestore()
-                .doc(`admins/${context.auth.uid}`)
-                .get();
-            
-            if (!adminDoc.exists) {
-                throw new functions.https.HttpsError(
-                    'permission-denied',
-                    'Admin access required'
-                );
-            }
-        } catch (error) {
-            if (error instanceof functions.https.HttpsError) {
-                throw error;
-            }
-            throw new functions.https.HttpsError(
-                'internal',
-                'Error verifying admin access'
-            );
-        }
-        
+        await verifyAdmin(context);
         try {
             const db = admin.firestore();
             const eventsSnapshot = await db.collection('events').get();

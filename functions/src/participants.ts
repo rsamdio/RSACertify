@@ -1,42 +1,14 @@
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { withMonitoring } from './monitoring';
+import { verifyAdmin } from './auth';
 
 /**
  * Search participants with admin authentication and pagination
  */
 export const searchParticipants = functions.https.onCall(
     withMonitoring(async (data, context) => {
-    // Verify authentication
-    if (!context || !context.auth) {
-        throw new functions.https.HttpsError(
-            'unauthenticated',
-            'Must be authenticated to search participants'
-        );
-    }
-    
-    // Verify admin access
-    try {
-        const adminDoc = await admin.firestore()
-            .doc(`admins/${context.auth.uid}`)
-            .get();
-        
-        if (!adminDoc.exists) {
-            throw new functions.https.HttpsError(
-                'permission-denied',
-                'Admin access required'
-            );
-        }
-    } catch (error) {
-        if (error instanceof functions.https.HttpsError) {
-            throw error;
-        }
-        throw new functions.https.HttpsError(
-            'internal',
-            'Error verifying admin access'
-        );
-    }
-    
+    await verifyAdmin(context);
     const { eventId, query, limit = 50, startAfter } = data;
     
     if (!eventId) {
@@ -100,35 +72,7 @@ export const searchParticipants = functions.https.onCall(
  */
 export const bulkUploadParticipants = functions.https.onCall(
     withMonitoring(async (data, context) => {
-    // Verify authentication
-    if (!context || !context.auth) {
-        throw new functions.https.HttpsError(
-            'unauthenticated',
-            'Must be authenticated to upload participants'
-        );
-    }
-    
-    // Verify admin access
-    try {
-        const adminDoc = await admin.firestore()
-            .doc(`admins/${context.auth.uid}`)
-            .get();
-        
-        if (!adminDoc.exists) {
-            throw new functions.https.HttpsError(
-                'permission-denied',
-                'Admin access required'
-            );
-        }
-    } catch (error) {
-        if (error instanceof functions.https.HttpsError) {
-            throw error;
-        }
-        throw new functions.https.HttpsError(
-            'internal',
-            'Error verifying admin access'
-        );
-    }
+    await verifyAdmin(context);
     
     const { eventId, participants } = data;
     
@@ -148,7 +92,7 @@ export const bulkUploadParticipants = functions.https.onCall(
     
     const batchSize = 500; // Firestore limit
     let processed = 0;
-    const progressRef = admin.database().ref(`bulkUploads/${context.auth.uid}/progress`);
+    const progressRef = admin.database().ref(`bulkUploads/${context.auth!.uid}/progress`);
     
     try {
         // Initialize progress

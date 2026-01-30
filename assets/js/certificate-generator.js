@@ -442,31 +442,9 @@ class CertificateGenerator {
     }
     
     
-    // Search for participant in Firestore using event document ID
-    async searchParticipant(eventDocId, email) {
-        if (!this.db) return null;
-        
-        try {
-            
-            // Query the participants subcollection of the specific event
-            const querySnapshot = await this.db.collection('events')
-                .doc(eventDocId)
-                .collection('participants')
-                .where('email', '==', email.toLowerCase())
-                .limit(1)
-                .get();
-            
-            if (!querySnapshot.empty) {
-                const doc = querySnapshot.docs[0];
-                const participantData = { id: doc.id, ...doc.data() };
-                return participantData;
-            }
-            
-            return null;
-            
-        } catch (error) {
-            throw error;
-        }
+    // Deprecated: Public search uses certificateManager.searchParticipant (RTDB + 1 doc read). Do not use this Firestore query path.
+    async searchParticipant() {
+        return null;
     }
     
     // Update participant certificate status in Firestore

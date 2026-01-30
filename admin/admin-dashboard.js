@@ -1722,41 +1722,55 @@ async function uploadBulkParticipants() {
     }
 }
 
-// CSV Export
+// CSV Export: use callable first (single server read), then cache-only local fallback. No client-side full collection read.
 async function exportParticipantsCsv() {
     if (!selectedEvent) return showAlert('Select an event first', 'warning');
-    
     try {
-        const snap = await db.collection('events').doc(selectedEvent.id).collection('participants').get();
-        const fields = selectedEvent.data?.participantFields || [];
-        const headers = ['name', 'email', ...fields.map(f => f.key), 'certificateStatus'];
-        
-        const rows = [];
-        snap.forEach(doc => {
-            const p = doc.data();
-            const row = [
-                p.name || '',
-                p.email || '',
-                ...fields.map(f => (p.additionalFields || {})[f.key] || ''),
-                (p.certificateStatus || 'pending')
-            ];
-            rows.push(row);
+        if (typeof firebase !== 'undefined' && firebase.functions) {
+            try {
+                const exportFunction = firebase.functions().httpsCallable('exportParticipantsCSV');
+                const result = await exportFunction({ eventId: selectedEvent.id });
+                const a = document.createElement('a');
+                a.href = result.data.downloadUrl;
+                a.download = `participants-${selectedEvent.id}-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                showAlert(`Export completed: ${result.data.recordCount} participants`, 'success');
+                return;
+            } catch (callableErr) {
+                // Fall through to cache-only export
+            }
+        }
+        const base = participantsManager ? (participantsManager.getCachedParticipants() || []) : (participantsCache || []);
+        const extraFields = (selectedEvent?.data?.participantFields || []);
+        const customKeys = extraFields.map(f => f.key);
+        const headers = ['name', 'email', ...customKeys, 'certificateStatus', 'createdAt', 'downloadedAt'];
+        const rows = [headers.join(',')];
+        const toIso = (v) => v?.toDate?.()?.toISOString?.() || (v instanceof Date ? v.toISOString() : '');
+        base.forEach(p => {
+            const line = headers.map(h => {
+                let val = '';
+                if (h === 'name') val = p.name || '';
+                else if (h === 'email') val = p.email || '';
+                else if (h === 'certificateStatus') val = p.certificateStatus || 'pending';
+                else if (h === 'createdAt') val = toIso(p.createdAt);
+                else if (h === 'downloadedAt') val = toIso(p.downloadedAt);
+                else val = (p.additionalFields || {})[h] || '';
+                if (typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))) val = '"' + val.replace(/"/g, '""') + '"';
+                return val;
+            });
+            rows.push(line.join(','));
         });
-        
-        const csvContent = [headers.join(','), ...rows.map(r => 
-            r.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')
-        )].join('\n');
-        
-        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const csv = rows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `participants-${selectedEvent.id}-${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
         URL.revokeObjectURL(url);
-        
+        showAlert(`Exported ${base.length} rows from cache`, 'success');
     } catch (error) {
-        showAlert('Export failed: ' + error.message, 'danger');
+        showAlert('Export failed: ' + (error.message || 'Unknown error'), 'danger');
     }
 }
 

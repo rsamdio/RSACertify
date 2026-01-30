@@ -15,6 +15,10 @@ const cacheConfig = {
     eventConfig: {
         stdTTL: 600, // 10 minutes
         checkperiod: 120
+    },
+    admin: {
+        stdTTL: 120, // 2 minutes
+        checkperiod: 60
     }
 };
 
@@ -22,6 +26,7 @@ const cacheConfig = {
 export const statisticsCache = new NodeCache(cacheConfig.statistics);
 export const searchCache = new NodeCache(cacheConfig.search);
 export const eventConfigCache = new NodeCache(cacheConfig.eventConfig);
+export const adminCache = new NodeCache(cacheConfig.admin);
 
 /**
  * Generate cache key for event statistics
@@ -47,9 +52,14 @@ export function getEventConfigCacheKey(eventId: string): string {
 /**
  * Clear all caches (useful for testing or manual invalidation)
  */
+export function getAdminCacheKey(uid: string): string {
+    return `admin_${uid}`;
+}
+
 export function clearAllCaches(): void {
     statisticsCache.flushAll();
     searchCache.flushAll();
     eventConfigCache.flushAll();
+    adminCache.flushAll();
 }
 
