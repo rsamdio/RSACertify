@@ -1,5 +1,5 @@
 import * as functions from 'firebase-functions/v1';
-import * as admin from 'firebase-admin';
+import { getAdmin } from './admin';
 import { withMonitoring } from './monitoring';
 import { verifyAdmin } from './auth';
 
@@ -20,7 +20,7 @@ export const exportParticipantsCSV = functions.https.onCall(
     
     try {
         // Get event data for field configuration
-        const eventDoc = await admin.firestore()
+        const eventDoc = await getAdmin().firestore()
             .doc(`events/${eventId}`)
             .get();
         
@@ -35,7 +35,7 @@ export const exportParticipantsCSV = functions.https.onCall(
         const participantFields = eventData?.participantFields || [];
         
         // Get all participants
-        const participantsSnapshot = await admin.firestore()
+        const participantsSnapshot = await getAdmin().firestore()
             .collection(`events/${eventId}/participants`)
             .get();
         
@@ -79,7 +79,7 @@ export const exportParticipantsCSV = functions.https.onCall(
         const csvContent = csvRows.join('\n');
         
         // Upload to Cloud Storage
-        const bucket = admin.storage().bucket();
+        const bucket = getAdmin().storage().bucket();
         const fileName = `exports/${eventId}/${Date.now()}_participants.csv`;
         const file = bucket.file(fileName);
         

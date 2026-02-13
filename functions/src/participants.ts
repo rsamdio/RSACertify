@@ -1,5 +1,5 @@
 import * as functions from 'firebase-functions/v1';
-import * as admin from 'firebase-admin';
+import { getAdmin, getFieldValue } from './admin';
 import { withMonitoring } from './monitoring';
 import { verifyAdmin } from './auth';
 
@@ -27,7 +27,7 @@ export const searchParticipants = functions.https.onCall(
     
     try {
         // Firestore search
-        let firestoreQuery = admin.firestore()
+        let firestoreQuery = getAdmin().firestore()
             .collection(`events/${eventId}/participants`)
             .where('name', '>=', query)
             .where('name', '<=', query + '\uf8ff')
@@ -35,7 +35,7 @@ export const searchParticipants = functions.https.onCall(
         
         // Add pagination if startAfter is provided
         if (startAfter) {
-            const startAfterDoc = await admin.firestore()
+            const startAfterDoc = await getAdmin().firestore()
                 .doc(`events/${eventId}/participants/${startAfter}`)
                 .get();
             if (startAfterDoc.exists) {
@@ -92,7 +92,7 @@ export const bulkUploadParticipants = functions.https.onCall(
     
     const batchSize = 500; // Firestore limit
     let processed = 0;
-    const progressRef = admin.database().ref(`bulkUploads/${context.auth!.uid}/progress`);
+    const progressRef = getAdmin().database().ref(`bulkUploads/${context.auth!.uid}/progress`);
     
     try {
         // Initialize progress
@@ -105,18 +105,18 @@ export const bulkUploadParticipants = functions.https.onCall(
         
         for (let i = 0; i < participants.length; i += batchSize) {
             const batch = participants.slice(i, i + batchSize);
-            const firestoreBatch = admin.firestore().batch();
+            const firestoreBatch = getAdmin().firestore().batch();
             
             batch.forEach(participant => {
-                const docRef = admin.firestore()
+                const docRef = getAdmin().firestore()
                     .collection(`events/${eventId}/participants`)
                     .doc();
                 
                 firestoreBatch.set(docRef, {
                     ...participant,
                     email: (participant.email || '').toLowerCase(),
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                    createdAt: getFieldValue().serverTimestamp(),
+                    updatedAt: getFieldValue().serverTimestamp()
                 });
             });
             

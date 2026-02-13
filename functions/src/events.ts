@@ -1,5 +1,5 @@
 import * as functions from 'firebase-functions/v1';
-import * as admin from 'firebase-admin';
+import { getAdmin, getFieldValue, ensureAdmin } from './admin';
 import { statisticsCache, eventConfigCache, getStatisticsCacheKey, getEventConfigCacheKey } from './cache';
 import { withMonitoring } from './monitoring';
 import { verifyAdmin } from './auth';
@@ -27,7 +27,7 @@ export const getEventStatistics = functions.https.onCall(
     }
     
     try {
-        const eventDoc = await admin.firestore()
+        const eventDoc = await getAdmin().firestore()
             .doc(`events/${eventId}`)
             .get();
         
@@ -75,6 +75,7 @@ export const getEventStatistics = functions.https.onCall(
  */
 export const getEventConfig = functions.https.onCall(
     withMonitoring(async (data, context) => {
+    ensureAdmin();
     const { eventId } = data;
     
     if (!eventId) {
@@ -93,7 +94,7 @@ export const getEventConfig = functions.https.onCall(
     
     try {
         // Fetch from Firestore
-        const eventDoc = await admin.firestore()
+        const eventDoc = await getAdmin().firestore()
             .doc(`events/${eventId}`)
             .get();
         
@@ -133,7 +134,7 @@ export const migrateCounters = functions.https.onCall(
     withMonitoring(async (data, context) => {
         await verifyAdmin(context);
         try {
-            const db = admin.firestore();
+            const db = getAdmin().firestore();
             const eventsSnapshot = await db.collection('events').get();
             
             if (eventsSnapshot.size === 0) {
@@ -175,7 +176,7 @@ export const migrateCounters = functions.https.onCall(
                     await db.collection('events').doc(eventId).update({
                         participantsCount: totalParticipants,
                         certificatesCount: downloadedCount,
-                        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                        updatedAt: getFieldValue().serverTimestamp()
                     });
                     
                     results.push({

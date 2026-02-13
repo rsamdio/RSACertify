@@ -1,5 +1,5 @@
 import * as functions from 'firebase-functions/v1';
-import * as admin from 'firebase-admin';
+import { getAdmin, ensureAdmin } from './admin';
 import { withMonitoring } from './monitoring';
 
 /**
@@ -10,15 +10,16 @@ export const syncEventMetadataToRealtime = functions.firestore
     .document('events/{eventId}')
     .onWrite(
         withMonitoring(async (change, context) => {
+            ensureAdmin();
             const eventId = context.params.eventId;
             
             try {
-                const realtimeRef = admin.database().ref(`events/${eventId}/meta`);
+                const realtimeRef = getAdmin().database().ref(`events/${eventId}/meta`);
                 
                 // If document was deleted, remove entire event path from Realtime DB
                 if (!change.after.exists) {
                     // Remove the entire event path to clean up all related data
-                    const eventPathRef = admin.database().ref(`events/${eventId}`);
+                    const eventPathRef = getAdmin().database().ref(`events/${eventId}`);
                     await eventPathRef.remove();
                     return;
                 }
@@ -57,10 +58,11 @@ export const syncAdminsToRealtime = functions.firestore
     .document('admins/{adminId}')
     .onWrite(
         withMonitoring(async (change, context) => {
+            ensureAdmin();
             const adminId = context.params.adminId;
             
             try {
-                const adminsListRef = admin.database().ref('admins/list');
+                const adminsListRef = getAdmin().database().ref('admins/list');
                 
                 // Get current list
                 const snapshot = await adminsListRef.once('value');
@@ -109,10 +111,11 @@ export const syncInvitesToRealtime = functions.firestore
     .document('invites/{inviteId}')
     .onWrite(
         withMonitoring(async (change, context) => {
+            ensureAdmin();
             const inviteId = context.params.inviteId;
             
             try {
-                const invitesListRef = admin.database().ref('invites/list');
+                const invitesListRef = getAdmin().database().ref('invites/list');
                 
                 // Get current list
                 const snapshot = await invitesListRef.once('value');
@@ -161,11 +164,12 @@ export const syncParticipantChangesToRealtime = functions.firestore
     .document('events/{eventId}/participants/{participantId}')
     .onWrite(
         withMonitoring(async (change, context) => {
+            ensureAdmin();
             const eventId = context.params.eventId;
             const participantId = context.params.participantId;
             
             try {
-                const changesRef = admin.database()
+                const changesRef = getAdmin().database()
                     .ref(`events/${eventId}/participants/changes`)
                     .push();
                 
@@ -236,11 +240,12 @@ export const syncParticipantIndexToRealtime = functions.firestore
     .document('events/{eventId}/participants/{participantId}')
     .onWrite(
         withMonitoring(async (change, context) => {
+            ensureAdmin();
             const eventId = context.params.eventId;
             const participantId = context.params.participantId;
             
             try {
-                const indexRef = admin.database()
+                const indexRef = getAdmin().database()
                     .ref(`events/${eventId}/participants/index/${participantId}`);
                 
                 if (!change.after.exists) {
@@ -285,11 +290,12 @@ export const syncParticipantSearchIndex = functions.firestore
     .document('events/{eventId}/participants/{participantId}')
     .onWrite(
         withMonitoring(async (change, context) => {
+            ensureAdmin();
             const eventId = context.params.eventId;
             const participantId = context.params.participantId;
             
             try {
-                const searchRef = admin.database()
+                const searchRef = getAdmin().database()
                     .ref(`events/${eventId}/search/${participantId}`);
                 
                 if (!change.after.exists) {
@@ -344,6 +350,7 @@ export const syncParticipantChangeLog = functions.firestore
     .document('events/{eventId}/participants/{participantId}')
     .onUpdate(
         withMonitoring(async (change, context) => {
+            ensureAdmin();
             const eventId = context.params.eventId;
             const participantId = context.params.participantId;
             
@@ -391,7 +398,7 @@ export const syncParticipantChangeLog = functions.firestore
                 }
                 
                 // Log each change
-                const changeLogRef = admin.database()
+                const changeLogRef = getAdmin().database()
                     .ref(`events/${eventId}/changes`)
                     .push();
                 
@@ -419,10 +426,11 @@ export const syncEventsListToRealtime = functions.firestore
     .document('events/{eventId}')
     .onWrite(
         withMonitoring(async (change, context) => {
+            ensureAdmin();
             const eventId = context.params.eventId;
             
             try {
-                const eventsListRef = admin.database().ref('events/list');
+                const eventsListRef = getAdmin().database().ref('events/list');
                 
                 // Get current list
                 const snapshot = await eventsListRef.once('value');

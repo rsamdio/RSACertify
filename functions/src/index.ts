@@ -1,7 +1,5 @@
 import * as functions from 'firebase-functions/v1';
-import * as admin from 'firebase-admin';
-
-admin.initializeApp();
+import { getAdmin, getFieldValue, ensureAdmin } from './admin';
 
 // ===== COUNTER FUNCTIONS =====
 
@@ -11,13 +9,14 @@ admin.initializeApp();
 export const onParticipantCreate = functions.firestore
     .document('events/{eventId}/participants/{participantId}')
     .onCreate(async (snap, context) => {
+        ensureAdmin();
         const eventId = context.params.eventId;
-        const eventRef = admin.firestore().doc(`events/${eventId}`);
+        const eventRef = getAdmin().firestore().doc(`events/${eventId}`);
         
         try {
             await eventRef.update({
-                participantsCount: admin.firestore.FieldValue.increment(1),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                participantsCount: getFieldValue().increment(1),
+                updatedAt: getFieldValue().serverTimestamp()
             });
         } catch (error) {
             console.error(`Error incrementing participantsCount for event ${eventId}:`, error);
@@ -31,13 +30,14 @@ export const onParticipantCreate = functions.firestore
 export const onParticipantDelete = functions.firestore
     .document('events/{eventId}/participants/{participantId}')
     .onDelete(async (snap, context) => {
+        ensureAdmin();
         const eventId = context.params.eventId;
-        const eventRef = admin.firestore().doc(`events/${eventId}`);
+        const eventRef = getAdmin().firestore().doc(`events/${eventId}`);
         
         try {
             await eventRef.update({
-                participantsCount: admin.firestore.FieldValue.increment(-1),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                participantsCount: getFieldValue().increment(-1),
+                updatedAt: getFieldValue().serverTimestamp()
             });
         } catch (error) {
             console.error(`Error decrementing participantsCount for event ${eventId}:`, error);
@@ -52,10 +52,11 @@ export const onParticipantDelete = functions.firestore
 export const onCertificateDownload = functions.firestore
     .document('events/{eventId}/participants/{participantId}')
     .onUpdate(async (change, context) => {
+        ensureAdmin();
         const before = change.before.data();
         const after = change.after.data();
         const eventId = context.params.eventId;
-        const eventRef = admin.firestore().doc(`events/${eventId}`);
+        const eventRef = getAdmin().firestore().doc(`events/${eventId}`);
         
         const beforeStatus = before.certificateStatus || 'pending';
         const afterStatus = after.certificateStatus || 'pending';
@@ -69,14 +70,14 @@ export const onCertificateDownload = functions.firestore
             // Status changed to 'downloaded'
             if (beforeStatus !== 'downloaded' && afterStatus === 'downloaded') {
                 await eventRef.update({
-                    certificatesCount: admin.firestore.FieldValue.increment(1),
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                    certificatesCount: getFieldValue().increment(1),
+                    updatedAt: getFieldValue().serverTimestamp()
                 });
             }
             else if (beforeStatus === 'downloaded' && afterStatus !== 'downloaded') {
                 await eventRef.update({
-                    certificatesCount: admin.firestore.FieldValue.increment(-1),
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                    certificatesCount: getFieldValue().increment(-1),
+                    updatedAt: getFieldValue().serverTimestamp()
                 });
             }
         } catch (error) {
@@ -93,12 +94,13 @@ export const onCertificateDownload = functions.firestore
 export const syncCountersToRealtime = functions.firestore
     .document('events/{eventId}')
     .onUpdate(async (change, context) => {
+        ensureAdmin();
         const eventId = context.params.eventId;
         const data = change.after.data();
         
         try {
             // Update Realtime Database counters
-            const realtimeRef = admin.database().ref(`events/${eventId}/counters`);
+            const realtimeRef = getAdmin().database().ref(`events/${eventId}/counters`);
             await realtimeRef.update({
                 participants: data.participantsCount || 0,
                 certificates: data.certificatesCount || 0,

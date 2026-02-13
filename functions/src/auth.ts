@@ -1,11 +1,12 @@
 import * as functions from 'firebase-functions/v1';
-import * as admin from 'firebase-admin';
+import { getAdmin, ensureAdmin } from './admin';
 import { adminCache, getAdminCacheKey } from './cache';
 
 /**
  * Verify caller is an admin. Uses short-lived in-memory cache to avoid repeated Firestore reads.
  */
 export async function verifyAdmin(context: functions.https.CallableContext): Promise<void> {
+    ensureAdmin();
     if (!context || !context.auth) {
         throw new functions.https.HttpsError(
             'unauthenticated',
@@ -17,7 +18,7 @@ export async function verifyAdmin(context: functions.https.CallableContext): Pro
     if (adminCache.get(cacheKey)) {
         return;
     }
-    const adminDoc = await admin.firestore()
+    const adminDoc = await getAdmin().firestore()
         .doc(`admins/${uid}`)
         .get();
     if (!adminDoc.exists) {

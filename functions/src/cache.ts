@@ -8,10 +8,6 @@ const cacheConfig = {
         stdTTL: 300, // 5 minutes
         checkperiod: 60
     },
-    search: {
-        stdTTL: 60, // 1 minute
-        checkperiod: 30
-    },
     eventConfig: {
         stdTTL: 600, // 10 minutes
         checkperiod: 120
@@ -24,7 +20,6 @@ const cacheConfig = {
 
 // Create cache instances
 export const statisticsCache = new NodeCache(cacheConfig.statistics);
-export const searchCache = new NodeCache(cacheConfig.search);
 export const eventConfigCache = new NodeCache(cacheConfig.eventConfig);
 export const adminCache = new NodeCache(cacheConfig.admin);
 
@@ -33,13 +28,6 @@ export const adminCache = new NodeCache(cacheConfig.admin);
  */
 export function getStatisticsCacheKey(eventId: string): string {
     return `stats_${eventId}`;
-}
-
-/**
- * Generate cache key for search results
- */
-export function getSearchCacheKey(eventId: string, query: string): string {
-    return `search_${eventId}_${query.toLowerCase()}`;
 }
 
 /**
@@ -58,7 +46,6 @@ export function getAdminCacheKey(uid: string): string {
 
 export function clearAllCaches(): void {
     statisticsCache.flushAll();
-    searchCache.flushAll();
     eventConfigCache.flushAll();
     adminCache.flushAll();
 }
