@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.gstatic.com https://www.googletagmanager.com https://rsacertify-default-rtdb.asia-southeast1.firebasedatabase.app https://*.asia-southeast1.firebasedatabase.app; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https://www.google-analytics.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://*.firebasedatabase.app https://*.asia-southeast1.firebasedatabase.app https://*.firebaseio.com wss://*.firebasedatabase.app wss://*.asia-southeast1.firebasedatabase.app wss://*.firebaseio.com https://accounts.google.com https://*.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.gstatic.com; frame-src 'self' https://accounts.google.com https://*.asia-southeast1.firebasedatabase.app; object-src 'none'; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
+    
+    <!-- Dynamic Title and Description -->
+    <title>{% if page.title %}{{ page.title }}{% endif %}{% if page.url == "/" %}{{site.title}}{% else %} | {{site.title}}{% endif %}</title>
+    <meta name="description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
+    
+    <!-- Enhanced Meta Tags -->
+    <meta name="author" content="{% if page.author %}{{ page.author }}{% else %}Rotaract South Asia MDIO{% endif %}">
+    <meta name="robots" content="{% if page.robots %}{{ page.robots }}{% else %}index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1{% endif %}">
+    <meta name="googlebot" content="{% if page.googlebot %}{{ page.googlebot }}{% else %}index, follow{% endif %}">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="msapplication-TileColor" content="#3b82f6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="RSA Certify">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="{{ page.url | replace:'index.html','' | absolute_url }}">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="{% if page.title %}{{ page.title }}{% endif %}{% if page.url == "/" %}{{site.title}}{% else %} | {{site.title}}{% endif %}">
+    <meta property="og:description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
+    <meta property="og:type" content="{% if page.og_type %}{{ page.og_type }}{% else %}website{% endif %}">
+    <meta property="og:url" content="{{ page.url | replace:'index.html','' | absolute_url }}">
+    <meta property="og:site_name" content="{{ site.title }}">
+    <meta property="og:image" content="{% if page.og_image %}{{ page.og_image | absolute_url }}{% else %}{{ site.og_image | absolute_url }}{% endif %}">
+    <meta property="og:image:type" content="image/webp">
+    <meta property="og:image:width" content="600">
+    <meta property="og:image:height" content="400">
+    <meta property="og:locale" content="en_US">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% if page.title %}{{ page.title }}{% endif %}{% if page.url == "/" %}{{site.title}}{% else %} | {{site.title}}{% endif %}">
+    <meta name="twitter:description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
+    <meta name="twitter:site" content="@{{ site.twitter_username }}">
+    <meta name="twitter:creator" content="@{{ site.twitter_username }}">
+    <meta name="twitter:image" content="{% if page.og_image %}{{ page.og_image | absolute_url }}{% else %}{{ site.og_image | absolute_url }}{% endif %}">
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="keywords" content="{% if page.keywords %}{{ page.keywords }}{% else %}RSA Certify, Certificate Center, Rotaract South Asia MDIO, Achievement Certificates, Digital Certificates, Rotaract Activities, Certificate Generation, RSAMDIO{% endif %}">
+    <meta name="subject" content="{% if page.subject %}{{ page.subject }}{% else %}{{ site.title }}{% endif %}">
+    <meta name="language" content="English">
+    <meta name="revisit-after" content="7 days">
+    <meta name="distribution" content="global">
+    <meta name="rating" content="general">
+    <meta name="coverage" content="worldwide">
+    <meta name="target" content="all">
+    
+    <!-- Cache Control -->
+    <meta http-equiv="cache-control" content="public">
+    <meta http-equiv="Expires" content="0">
+    
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/webp" href="{{site.baseurl}}/assets/images/favicon.webp">
+    <link rel="icon" type="image/x-icon" href="{{site.baseurl}}/assets/images/favicon.ico">
+    <link rel="shortcut icon" href="{{site.baseurl}}/assets/images/favicon.ico">
+    <link rel="apple-touch-icon" href="{{site.baseurl}}/assets/images/favicon.webp">
+    
+    <!-- Performance Optimizations -->
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://www.gstatic.com">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://www.google-analytics.com">
+    
+    <!-- Preload Critical Resources -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style">
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style">
+    <link rel="preload" href="{{ '/assets/css/style.css' | relative_url }}" as="style">
+    <link rel="preload" as="image" href="{{site.baseurl}}/assets/images/rsamdio.webp" type="image/webp">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome 6 (Latest) -->
+    <!-- Font Awesome 6 (Latest) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="{{ '/assets/css/style.css' | relative_url }}" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SVX1SF3FE5"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-SVX1SF3FE5');
+    </script>
+    
+    <!-- SEO Tags -->
+    {% seo %}
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "{% if page.schema_type %}{{ page.schema_type }}{% else %}WebSite{% endif %}",
+        "name": "{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}",
+        "description": "{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}",
+        "url": "{{ site.url }}{{ page.url }}",
+        "{% if page.schema_type == 'Event' %}startDate": "{{ page.date | date: '%Y-%m-%d' }}",
+        "endDate": "{{ page.date | date: '%Y-%m-%d' }}",
+        "eventStatus": "{% if page.status == 'active' %}EventScheduled{% else %}EventCancelled{% endif %}",
+        "eventAttendanceMode": "OfflineEventAttendanceMode",
+        "organizer": {
+            "@type": "Organization",
+            "name": "Rotaract South Asia MDIO",
+            "url": "{{ site.url }}"
+        },
+        "{% else %}potentialAction": {
+            "@type": "SearchAction",
+            "target": "{{ site.url }}/?search={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }{% endif %}"
+    }
+    </script>
+</head>
+<body class="enhanced-body">
+    
+    <!-- Main Content -->
+    <main id="main-content" class="container">
+        {{ content }}
+    </main>
+
+    <!-- Enhanced Footer -->
+    {% include footer.html %}
+
+    <!-- Bootstrap JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script defer src="{{ '/assets/js/security-utils.js' | relative_url }}"></script>
+    <script defer src="{{ '/assets/js/firebase-config.js' | relative_url }}"></script>
+    <script defer src="{{ '/assets/js/analytics-utils.js' | relative_url }}"></script>
+    <script defer src="{{ '/assets/js/certificate-generator.js' | relative_url }}"></script>
+    <script defer src="{{ '/assets/js/main.js' | relative_url }}"></script>
+    
+    <!-- Enhanced Styles for Layout -->
+    <style>
+    /* Visually Hidden Elements for Screen Readers */
+    .visually-hidden {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+    }
+    
+    /* Skip Link for Accessibility */
+    .skip-link {
+        position: absolute;
+        top: -40px;
+        left: 6px;
+        background: #3b82f6;
+        color: white;
+        padding: 8px;
+        text-decoration: none;
+        border-radius: 4px;
+        z-index: 10000;
+        transition: top 0.3s;
+    }
+    
+    .skip-link:focus {
+        top: 6px;
+    }
+    
+    /* Enhanced Body */
+    .enhanced-body {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Main Content */
+    main {
+        flex: 1;
+        padding: 2rem 0;
+    }
+    
+    /* Enhanced Footer */
+    .enhanced-footer {
+        background: transparent !important;
+        color: #475569 !important;
+        padding: 2rem 0;
+        margin-top: auto;
+        border-top: 1px solid #e2e8f0;
+    }
+    
+    .enhanced-footer * {
+        color: inherit;
+    }
+    
+    .footer-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .footer-links a {
+        text-decoration: none;
+        transition: color 0.3s ease;
+        color: #64748b !important;
+    }
+    
+    .footer-links a:hover {
+        color: #3b82f6 !important;
+    }
+    
+    .footer-heading {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #475569 !important;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .footer-text {
+        font-size: 0.75rem;
+        color: #64748b !important;
+        margin-bottom: 0;
+    }
+    
+    .footer-link {
+        color: #64748b !important;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+    
+    .footer-link:hover {
+        color: #3b82f6 !important;
+    }
+    
+    .footer-divider {
+        border-top: 1px solid #cbd5e1;
+        padding-top: 1rem;
+    }
+    
+    .powered-by {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .footer-nav {
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    /* Override any Bootstrap text color classes */
+    .enhanced-footer .text-muted {
+        color: #64748b !important;
+    }
+    
+    .enhanced-footer .text-end {
+        text-align: right !important;
+    }
+    
+    .enhanced-footer .text-center {
+        text-align: center !important;
+    }
+    
+    .enhanced-footer .text-md-start {
+        text-align: left !important;
+    }
+    
+    .enhanced-footer .text-md-end {
+        text-align: right !important;
+    }
+    
+    /* Responsive Footer */
+    @media (max-width: 768px) {
+        .enhanced-footer .text-end {
+            text-align: left !important;
+            margin-top: 1rem;
+        }
+        
+        .footer-content {
+            text-align: center;
+        }
+    }
+    
+    /* Loading States */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(5px);
+    }
+    
+    /* Enhanced Focus States */
+    a:focus,
+    button:focus,
+    input:focus,
+    select:focus,
+    textarea:focus {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+    }
+    
+    /* Print Styles */
+    @media print {
+        .enhanced-footer,
+        .skip-link {
+            display: none !important;
+        }
+        
+        main {
+            padding: 0;
+        }
+    }
+    </style>
+</body>
+</html>

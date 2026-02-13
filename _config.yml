@@ -1,0 +1,76 @@
+# Site settings
+title: "RSA Certify - An initative Rotaract South Asia MDIO"
+email: rsamdio@gmail.com
+description: "Celebrate and showcase your Contributions and Achievements."
+baseurl: ""
+url: "https://certify.rsamdio.org"
+twitter_username: rsa_mdio
+github_username: rsamdioweb
+
+og_image: "/assets/images/certifyogimg.webp"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-paginate
+
+# Production optimizations
+compress_html:
+  clippings: all
+  comments: all
+  endings: all
+  startings: [html, head, body]
+  blanklines: false
+  profile: false
+
+# Performance settings
+incremental: false
+lsi: false
+excerpt_separator: "\n\n"
+
+# Collections
+collections:
+  events:
+    output: true
+    permalink: /:slug/
+    sort_by: date
+    sort_direction: reverse
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "events"
+    values:
+      layout: "event"
+      author: "Admin"
+
+# Pagination
+paginate: 10
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+  - functions/
+
+# Exclude from sitemap
+jekyll-sitemap:
+  exclude:
+    - /admin/
+
+# Include files
+include:
+  - assets
+  - admin
+  - .well-known
