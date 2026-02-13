@@ -175,8 +175,10 @@ keywords: "privacy policy, data protection, RSA Certify, certificate generation,
                     <h3>4.1 Cloud Storage (Primary)</h3>
                     <p>Participant data and event information is stored securely in Google Firebase Firestore database. This includes participant details, certificate status, and download tracking. Data is encrypted in transit and at rest.</p>
 
+                    <p class="highlight">Public users can only look up their own certificates by entering a redeem code or email address for a specific event. They cannot list or browse other participants, and certificate verification requests are processed through secure backend services.</p>
+
                     <h3>4.2 Admin Data Storage</h3>
-                    <p>Administrator account information and event management data is stored in Firebase with proper authentication and access controls. Only authorized administrators can access and modify this data.</p>
+                    <p>Administrator account information and event management data is stored in Firebase with strict authentication and access controls. Only authorized administrators can access and modify this data, and administrator tools are separate from the public certificate search pages.</p>
 
                     <h3>4.3 Security Measures</h3>
                     <p>We implement comprehensive security measures to protect your information:</p>

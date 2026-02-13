@@ -19,27 +19,21 @@ class CertificateManager {
         }
     }
     
-    // Enhanced search for participant in Firestore with security
-    async searchParticipant(collectionName, email) {
-        
-        if (!this.db) {
-            throw new Error('Firestore not initialized');
-        }
+    // Secure public search for participant via Cloud Function
+    async searchParticipant(collectionName, emailOrCode) {
         
         // Security: Input validation and sanitization
-        // Accept both email addresses and redeem codes
-        const isValidEmail = SecurityUtils.validateEmail(email);
-        const isValidRedeemCode = SecurityUtils.validateRedeemCode(email);
+        const isValidEmail = SecurityUtils.validateEmail(emailOrCode);
+        const isValidRedeemCode = SecurityUtils.validateRedeemCode(emailOrCode);
         
         if (!isValidEmail && !isValidRedeemCode) {
-            SecurityUtils.logSecurityEvent('invalid_input_format', { email, collectionName });
+            SecurityUtils.logSecurityEvent('invalid_input_format', { value: emailOrCode, collectionName });
             
-            // Log analytics for invalid search
             if (window.analyticsUtils) {
                 window.analyticsUtils.logCertificateSearch(
                     collectionName, 
                     'invalid', 
-                    email, 
+                    emailOrCode, 
                     false, 
                     'Invalid email address or redeem code format'
                 );
@@ -48,17 +42,16 @@ class CertificateManager {
             throw new Error('Invalid email address or redeem code format');
         }
         
-        // Security: Rate limiting
-        const rateLimitKey = `search_${email}`;
+        // Security: Rate limiting (client-side)
+        const rateLimitKey = `search_${emailOrCode}`;
         if (!SecurityUtils.checkRateLimit(rateLimitKey, 10, 60000)) {
-            SecurityUtils.logSecurityEvent('rate_limit_exceeded', { email, collectionName });
+            SecurityUtils.logSecurityEvent('rate_limit_exceeded', { value: emailOrCode, collectionName });
             
-            // Log analytics for rate limit exceeded
             if (window.analyticsUtils) {
                 window.analyticsUtils.logCertificateSearch(
                     collectionName, 
                     isValidEmail ? 'email' : 'redeem_code', 
-                    email, 
+                    emailOrCode, 
                     false, 
                     'Rate limit exceeded'
                 );
@@ -67,82 +60,38 @@ class CertificateManager {
             throw new Error('Too many search attempts. Please wait before trying again.');
         }
         
-        // Security: Sanitize collection name
+        // Extract eventId from collectionName (format: events/{eventId}/participants)
         const sanitizedCollection = SecurityUtils.sanitizeFirestoreQuery(collectionName);
         if (!sanitizedCollection) {
             SecurityUtils.logSecurityEvent('invalid_collection_name', { collectionName });
             throw new Error('Invalid collection name');
         }
-        
-        // Extract eventId from collectionName (format: events/{eventId}/participants)
-                const pathParts = sanitizedCollection.split('/');
+        const pathParts = sanitizedCollection.split('/');
         const eventId = pathParts.length >= 2 ? pathParts[1] : null;
         
+        if (!eventId) {
+            throw new Error('Invalid event configuration');
+        }
         
-        // Use Realtime DB search (NO Firestore query fallback)
-        if (!eventId || !window.realtimeDb) {
-            if (window.analyticsUtils) {
-                window.analyticsUtils.logCertificateSearch(
-                    sanitizedCollection,
-                    isValidEmail ? 'email' : 'redeem_code',
-                    email,
-                    false,
-                    'Realtime Database not available'
-                );
-            }
-            return null;
+        // Call secure backend verification function
+        if (typeof firebase === 'undefined' || !firebase.functions) {
+            throw new Error('Certificate verification service is unavailable. Please try again later.');
         }
         
         try {
-            const searchRef = window.realtimeDb.ref(`events/${eventId}/search`);
-            const snapshot = await searchRef.once('value');
-            const searchData = snapshot.val();
-            
-            if (!searchData) {
-                // Search index empty or doesn't exist
-                if (window.analyticsUtils) {
-                    window.analyticsUtils.logCertificateSearch(
-                        sanitizedCollection,
-                        isValidEmail ? 'email' : 'redeem_code',
-                        email,
-                        false,
-                        'Certificate not found'
-                    );
-                }
-                return null;
-            }
-            
-            const searchValue = email.toLowerCase().trim();
-            
-            // Find matching participant in search index with strict exact matching
-            // For emails: must match email field exactly
-            // For redeem codes: must match email field exactly (redeem code is stored in email field)
-            const participantId = Object.keys(searchData).find(id => {
-                const entry = searchData[id];
-                if (!entry) return false;
-                
-                // Both email and redeem code are stored in the email field
-                // Match exactly against the email field (case-insensitive)
-                // This ensures "test" does NOT match "test@test.com" and "code" does NOT match "testcode"
-                if (entry.email && entry.email.toLowerCase() === searchValue) {
-                    return true;
-                }
-                
-                // No fallback - if email field is missing, return null
-                // Existing participants will get email field synced when they're updated
-                // This ensures exact matching and prevents false positives
-                
-                return false;
+            const verifyFn = firebase.functions().httpsCallable('verifyCertificate');
+            const result = await verifyFn({
+                eventId,
+                redeem: emailOrCode
             });
             
-            
-            if (!participantId) {
-                // Not found in search index
+            const data = result && result.data;
+            if (!data || !data.found || !data.participant) {
                 if (window.analyticsUtils) {
                     window.analyticsUtils.logCertificateSearch(
                         sanitizedCollection, 
                         isValidEmail ? 'email' : 'redeem_code', 
-                        email, 
+                        emailOrCode, 
                         false,
                         'Certificate not found'
                     );
@@ -150,37 +99,16 @@ class CertificateManager {
                 return null;
             }
             
-            // Fetch full document from Firestore by ID (direct read, not a query)
-            const participantDoc = await this.db
-                .collection('events')
-                .doc(eventId)
-                .collection('participants')
-                .doc(participantId)
-                .get();
-            
-            if (!participantDoc.exists) {
-                // Document doesn't exist (sync issue)
-                if (window.analyticsUtils) {
-                    window.analyticsUtils.logCertificateSearch(
-                        sanitizedCollection, 
-                        isValidEmail ? 'email' : 'redeem_code',
-                        email,
-                        false,
-                        'Participant document not found'
-                    );
-                }
-                return null;
-            }
-            
-            const participantData = { id: participantDoc.id, ...participantDoc.data() };
+            const participantData = {
+                ...data.participant
+            };
             const sanitizedData = this.sanitizeParticipantData(participantData);
             
-            // Log successful search
             if (window.analyticsUtils) {
                 window.analyticsUtils.logCertificateSearch(
                     sanitizedCollection, 
                     isValidEmail ? 'email' : 'redeem_code', 
-                    email, 
+                    emailOrCode, 
                     true
                 );
                 window.analyticsUtils.logCertificateFound(
@@ -193,13 +121,13 @@ class CertificateManager {
             return sanitizedData;
             
         } catch (error) {
-            SecurityUtils.logSecurityEvent('search_error', { error: error.message, email, collectionName });
+            SecurityUtils.logSecurityEvent('search_error', { error: error.message, value: emailOrCode, collectionName });
             
             if (window.analyticsUtils) {
                 window.analyticsUtils.logCertificateSearch(
                     sanitizedCollection, 
                     isValidEmail ? 'email' : 'redeem_code', 
-                    email, 
+                    emailOrCode, 
                     false, 
                     error.message
                 );
@@ -207,7 +135,7 @@ class CertificateManager {
                     'certificate_search_error',
                     error.message,
                     'searchParticipant',
-                    { collectionName, email, errorCode: error.code }
+                    { collectionName, value: emailOrCode, errorCode: error.code }
                 );
             }
             

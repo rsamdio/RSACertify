@@ -16,6 +16,7 @@ class ParticipantsManager {
     }
 
     // Initialize participants management for an event
+    // Do not load from Firestore here; dashboard loadParticipants() will load from RTDB (or Firestore fallback) and populate participantsCache
     async initialize(eventId) {
         this.currentEventId = eventId;
         this.resetPagination();
@@ -23,9 +24,6 @@ class ParticipantsManager {
         
         // Setup real-time listener
         this.realtimeManager.setupParticipantsListener(eventId);
-        
-        // Load first page
-        await this.loadParticipantsPage();
     }
 
     // Load participants with pagination

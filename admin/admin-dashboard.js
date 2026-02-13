@@ -315,7 +315,7 @@ async function loadEvents() {
             const participantsCount = e.participantsCount || 0;
             const certificatesCount = e.certificatesCount || 0;
             
-            rows.push(`<tr>
+            rows.push(`<tr data-event-id="${e.id}">
                 <td>
                     <div class="fw-semibold fs-6">${e.title || '(untitled)'}</div>
                     <div class="text-muted small">
@@ -352,6 +352,9 @@ async function loadEvents() {
                         </button>
                         <button class="btn btn-sm btn-primary" onclick="manageParticipants('${e.id}')" title="Manage Participants">
                             <i class="fa-solid fa-users"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="reconcileEventCounters('${e.id}')" title="Reconcile Counters">
+                            <i class="fa-solid fa-sync-alt"></i>
                         </button>
                         <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteEvent('${e.id}','${(e.title || '').replace(/\"/g,'\\\"')}')" title="Delete Event">
                             <i class="fa-regular fa-trash-can"></i>
@@ -462,7 +465,7 @@ function renderEventsFromCache() {
         const participantsCount = e.participantsCount || 0;
         const certificatesCount = e.certificatesCount || 0;
         
-        return `<tr>
+        return `<tr data-event-id="${e.id}">
             <td>
                 <div class="fw-semibold fs-6">${e.title || '(untitled)'}</div>
                 <div class="text-muted small">
@@ -499,6 +502,9 @@ function renderEventsFromCache() {
                     </button>
                     <button class="btn btn-sm btn-primary" onclick="manageParticipants('${e.id}')" title="Manage Participants">
                         <i class="fa-solid fa-users"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning" onclick="reconcileEventCounters('${e.id}')" title="Reconcile Counters">
+                        <i class="fa-solid fa-sync-alt"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteEvent('${e.id}','${(e.title || '').replace(/\"/g,'\\\"')}')" title="Delete Event">
                         <i class="fa-regular fa-trash-can"></i>
@@ -724,8 +730,16 @@ async function loadParticipants(forceRefresh = false) {
             try {
                 const cached = await idbLoadParticipants(selectedEvent.id);
                 if (cached?.rows?.length > 0) {
-                    finalParticipants = cached.rows.slice();
-                    dataSource = 'indexeddb';
+                    const cachedCount = cached.rows.length;
+                    const storedCount = selectedEvent?.data?.participantsCount || 0;
+                    
+                    // If cache count doesn't match event's participantsCount, treat cache as stale
+                    if (storedCount === 0 || storedCount !== cachedCount) {
+                        // Ignore stale cache; we'll fall through to RTDB / Firestore
+                    } else {
+                        finalParticipants = cached.rows.slice();
+                        dataSource = 'indexeddb';
+                    }
                 }
             } catch (idbError) {
                 // IndexedDB unavailable, continue to next source
@@ -830,7 +844,29 @@ async function loadParticipants(forceRefresh = false) {
         }
         
         // Update UI consistently
-        el('participantsCount').innerText = finalParticipants.length;
+        const actualCount = finalParticipants.length;
+        el('participantsCount').innerText = actualCount;
+        
+        // Check for counter discrepancy and show warning if needed
+        if (selectedEvent && selectedEvent.data) {
+            const storedCount = selectedEvent.data.participantsCount || 0;
+            if (storedCount !== actualCount) {
+                // Show warning badge or message
+                const countElement = el('participantsCount');
+                if (countElement) {
+                    countElement.classList.add('text-warning');
+                    countElement.title = `Counter discrepancy: stored=${storedCount}, actual=${actualCount}. Click reconcile button to fix.`;
+                }
+            } else {
+                // Remove warning styling if counts match
+                const countElement = el('participantsCount');
+                if (countElement) {
+                    countElement.classList.remove('text-warning');
+                    countElement.title = '';
+                }
+            }
+        }
+        
         updateSortIcons();
         
         // Show appropriate message
@@ -1006,22 +1042,33 @@ async function openParticipantModal(id) {
     if (id) {
         let participant = participantsCache.find(p => p.id === id);
         
-        // If participant found but missing additionalFields (loaded from Realtime DB index),
-        // fetch full document from Firestore
+        // If participant found but missing additionalFields, try RTDB index first then Firestore
         if (participant && (!participant.additionalFields || Object.keys(participant.additionalFields || {}).length === 0) && selectedEvent.data.participantFields?.length > 0) {
-            try {
-                const doc = await db.collection('events').doc(selectedEvent.id)
-                    .collection('participants').doc(id).get();
-                if (doc.exists) {
-                    const fullData = doc.data();
-                    participant = { id: doc.id, ...fullData };
-                    const index = participantsCache.findIndex(p => p.id === id);
-                    if (index !== -1) {
-                        participantsCache[index] = participant;
+            if (realtimeDb && selectedEvent.id) {
+                try {
+                    const indexRef = realtimeDb.ref(`events/${selectedEvent.id}/participants/index/${id}`);
+                    const indexSnapshot = await indexRef.once('value');
+                    const indexEntry = indexSnapshot.val();
+                    if (indexEntry && indexEntry.additionalFields && Object.keys(indexEntry.additionalFields).length > 0) {
+                        participant.additionalFields = indexEntry.additionalFields;
+                        const idx = participantsCache.findIndex(p => p.id === id);
+                        if (idx !== -1) participantsCache[idx] = participant;
                     }
+                } catch (rtdbError) { /* fall through to Firestore */ }
+            }
+            if (!participant.additionalFields || Object.keys(participant.additionalFields || {}).length === 0) {
+                try {
+                    const doc = await db.collection('events').doc(selectedEvent.id)
+                        .collection('participants').doc(id).get();
+                    if (doc.exists) {
+                        const fullData = doc.data();
+                        participant = { id: doc.id, ...fullData };
+                        const index = participantsCache.findIndex(p => p.id === id);
+                        if (index !== -1) participantsCache[index] = participant;
+                    }
+                } catch (error) {
+                    // Failed to fetch full participant data
                 }
-            } catch (error) {
-                // Failed to fetch full participant data
             }
         }
         
@@ -1036,31 +1083,52 @@ async function openParticipantModal(id) {
                 if (input) input.value = v;
             });
         } else {
-            // If still not found, try fetching directly from Firestore
-            try {
-                const doc = await db.collection('events').doc(selectedEvent.id)
-                    .collection('participants').doc(id).get();
-                if (doc.exists) {
-                    const fullData = doc.data();
-                    participant = { id: doc.id, ...fullData };
-                    // Add to cache
-                    participantsCache.push(participant);
-                    
-                    el('participantName').value = participant.name || '';
-                    el('participantEmail').value = participant.email || '';
-                    
-                    // Load custom fields
-                    (selectedEvent.data.participantFields || []).forEach(f => {
-                        const v = (participant.additionalFields || {})[f.key] || '';
-                        const input = document.getElementById('pf_' + f.key);
-                        if (input) input.value = v;
-                    });
-                } else {
-                    showAlert('Participant not found. Please refresh the participants list.', 'warning');
-            return;
+            // Not in cache: try RTDB index first, then Firestore
+            let participant = null;
+            if (realtimeDb && selectedEvent && selectedEvent.id) {
+                try {
+                    const indexRef = realtimeDb.ref(`events/${selectedEvent.id}/participants/index/${id}`);
+                    const indexSnapshot = await indexRef.once('value');
+                    const indexEntry = indexSnapshot.val();
+                    if (indexEntry) {
+                        participant = {
+                            id: id,
+                            name: indexEntry.name || '',
+                            email: indexEntry.email || '',
+                            certificateStatus: indexEntry.certificateStatus || 'pending',
+                            updatedAt: indexEntry.updatedAt ? { seconds: Math.floor(indexEntry.updatedAt / 1000) } : null,
+                            additionalFields: indexEntry.additionalFields || {}
+                        };
+                        participantsCache.push(participant);
+                    }
+                } catch (rtdbError) {
+                    // RTDB read failed, fall through to Firestore
                 }
-            } catch (error) {
-                showAlert('Failed to load participant data. Please refresh the participants list.', 'danger');
+            }
+            if (!participant) {
+                try {
+                    const doc = await db.collection('events').doc(selectedEvent.id)
+                        .collection('participants').doc(id).get();
+                    if (doc.exists) {
+                        const fullData = doc.data();
+                        participant = { id: doc.id, ...fullData };
+                        participantsCache.push(participant);
+                    }
+                } catch (error) {
+                    showAlert('Failed to load participant data. Please refresh the participants list.', 'danger');
+                    return;
+                }
+            }
+            if (participant) {
+                el('participantName').value = participant.name || '';
+                el('participantEmail').value = participant.email || '';
+                (selectedEvent.data.participantFields || []).forEach(f => {
+                    const v = (participant.additionalFields || {})[f.key] || '';
+                    const input = document.getElementById('pf_' + f.key);
+                    if (input) input.value = v;
+                });
+            } else {
+                showAlert('Participant not found. Please refresh the participants list.', 'warning');
                 return;
             }
         }
@@ -1207,6 +1275,16 @@ function confirmDeleteParticipant(id, name) {
             
             // Update local cache
             participantsCache = participantsCache.filter(p => p.id !== id);
+            
+            // Persist updated cache to IndexedDB (best-effort) so future loads don't see stale rows
+            try {
+                if (selectedEvent && typeof idbSaveParticipants === 'function') {
+                    await idbSaveParticipants(selectedEvent.id, participantsCache);
+                }
+            } catch (cacheError) {
+                // Ignore cache write failures – they should not block UI
+                console.warn('Failed to update participants cache in IndexedDB after delete:', cacheError);
+            }
             
             // Update UI without full reload
             renderParticipantsFromCache();
@@ -2110,134 +2188,27 @@ async function exportParticipantsCsvLocal() {
     }
 }
 
-// Live updates toggle: attach/detach a per-collection listener
+// Live updates toggle (no-op now that RTDB changes log is removed)
 let __liveUnsub = null;
 async function toggleLiveUpdates(enable) {
-    try {
-        if (__liveUnsub) { 
+    // We no longer use Realtime Database change logs for live updates.
+    // Keep this function as a harmless stub so the UI switch still works without errors.
+    if (__liveUnsub) {
+        try {
             if (typeof __liveUnsub === 'function') {
-                __liveUnsub(); 
+                __liveUnsub();
             } else if (__liveUnsub.off) {
                 __liveUnsub.off();
             }
-            __liveUnsub = null; 
+        } catch (e) {
+            // ignore
         }
-        if (!enable) return showAlert('Live updates off', 'info', 1500);
-        if (!selectedEvent || !realtimeDb) return;
-        
-        // Use Realtime DB for change notifications instead of Firestore onSnapshot
-        const changesRef = realtimeDb.ref(`events/${selectedEvent.id}/participants/changes`);
-        
-        // Use 'value' listener to watch all changes, then process each child
-        // This is more reliable than 'child_added' which can have issues
-        const processChange = async (snapshot) => {
-            if (!snapshot || !snapshot.exists()) return;
-            
-            const change = snapshot.val();
-            if (!change || !change.participantId) return;
-            
-            try {
-                
-                const participantId = change.participantId;
-                let changed = false;
-                
-                if (change.type === 'deleted') {
-                    // Remove from cache
-                    participantsCache = (participantsCache || []).filter(x => x.id !== participantId);
-                    changed = true;
-                    
-                    // Update participantsManager cache
-                    if (participantsManager) {
-                        participantsManager.participantsCache.delete(participantId);
-                    }
-                    
-                    // Update search index
-                    if (window.__participantsLocalIndex) {
-                        window.__participantsLocalIndex = window.__participantsLocalIndex.filter(x => x.id !== participantId);
-                    }
-                } else if (change.type === 'added' || change.type === 'updated') {
-                    // Always fetch full document from Firestore for consistency
-                    try {
-                        const doc = await db.collection('events').doc(selectedEvent.id)
-                            .collection('participants').doc(participantId).get();
-                        if (doc.exists) {
-                            const p = { id: doc.id, ...doc.data() };
-                            const idx = (participantsCache || []).findIndex(x => x.id === participantId);
-                            if (idx === -1) {
-                                participantsCache.push(p);
-                            } else {
-                                participantsCache[idx] = p;
-                            }
-                            changed = true;
-                            
-                            // Update participantsManager cache
-                            if (participantsManager) {
-                                participantsManager.participantsCache.set(participantId, p);
-                            }
-                            
-                            // Update search index
-                            if (window.__participantsLocalIndex) {
-                                const searchIdx = window.__participantsLocalIndex.findIndex(x => x.id === participantId);
-                                if (searchIdx >= 0) {
-                                    window.__participantsLocalIndex[searchIdx] = {
-                                        id: p.id,
-                                        name: (p.name || '').toLowerCase(),
-                                        email: (p.email || '').toLowerCase()
-                                    };
-                                } else {
-                                    window.__participantsLocalIndex.push({
-                                        id: p.id,
-                                        name: (p.name || '').toLowerCase(),
-                                        email: (p.email || '').toLowerCase()
-                                    });
-                                }
-                            }
-                        }
-                    } catch (fetchError) {
-                        // Failed to fetch participant document
-                    }
-                }
-                
-                // Always re-render if cache changed
-                if (changed) {
-                    renderParticipantsFromCache();
-                    el('participantsCount').innerText = participantsCache.length;
-                }
-            } catch (error) {
-                // Error processing live update
-            }
-        };
-        
-        // Listen to all changes and process each child
-        const listener = changesRef.on('child_added', (snapshot) => {
-            if (snapshot) {
-                processChange(snapshot);
-            }
-        });
-        
-        // Also listen for child_changed and child_removed
-        const listenerChanged = changesRef.on('child_changed', (snapshot) => {
-            if (snapshot) {
-                processChange(snapshot);
-            }
-        });
-        
-        const listenerRemoved = changesRef.on('child_removed', (snapshot) => {
-            if (snapshot) {
-                processChange(snapshot);
-            }
-        });
-        
-        // Store unsubscribe function
-        __liveUnsub = () => {
-            changesRef.off('child_added', listener);
-            changesRef.off('child_changed', listenerChanged);
-            changesRef.off('child_removed', listenerRemoved);
-        };
-        
-        showAlert('Live updates on (Realtime DB)', 'success', 1500);
-    } catch (e) {
-        showAlert('Live updates failed: ' + e.message, 'danger');
+        __liveUnsub = null;
+    }
+    if (enable) {
+        showAlert('Live updates are disabled (no changes log). Use refresh to see updates.', 'info', 2500);
+    } else {
+        showAlert('Live updates off', 'info', 1500);
     }
 }
 
@@ -2387,7 +2358,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Migration function to populate initial counters
+// Migration function to populate initial counters for all events
 async function runMigration() {
     if (!currentUser) {
         showAlert('Please sign in first', 'warning');
@@ -2401,8 +2372,9 @@ async function runMigration() {
         const result = await migrateFunction({});
         
         if (result.data.success) {
+            const corrected = result.data.results?.filter(r => r.participants?.corrected || r.certificates?.corrected).length || 0;
             showAlert(
-                `Migration complete! Processed ${result.data.processed} events. ${result.data.errors > 0 ? `(${result.data.errors} errors)` : ''}`,
+                `Migration complete! Processed ${result.data.processed} events. ${corrected > 0 ? `${corrected} events corrected. ` : ''}${result.data.errors > 0 ? `(${result.data.errors} errors)` : ''}`,
                 'success'
             );
             // Reload events to show updated counts
@@ -2415,12 +2387,73 @@ async function runMigration() {
         }
 }
 
+// Reconcile counters for a single event
+async function reconcileEventCounters(eventId) {
+    if (!currentUser) {
+        showAlert('Please sign in first', 'warning');
+        return;
+    }
+    
+    if (!eventId) {
+        showAlert('Event ID is required', 'warning');
+        return;
+    }
+    
+    try {
+        // Find event title for display
+        const event = eventsCache?.find(e => e.id === eventId);
+        const eventTitle = event?.title || eventId;
+        
+        showAlert(`Reconciling counters for "${eventTitle}"...`, 'info');
+        
+        const migrateFunction = firebase.functions().httpsCallable('migrateCounters');
+        const result = await migrateFunction({ eventId });
+        
+        if (result.data.success && result.data.results && result.data.results.length > 0) {
+            const reconciliation = result.data.results[0];
+            
+            if (reconciliation.error) {
+                showAlert(`Reconciliation failed: ${reconciliation.error}`, 'danger');
+                return;
+            }
+            
+            const participantsCorrected = reconciliation.participants?.corrected || false;
+            const certificatesCorrected = reconciliation.certificates?.corrected || false;
+            
+            if (participantsCorrected || certificatesCorrected) {
+                const changes = [];
+                if (participantsCorrected) {
+                    changes.push(`participants: ${reconciliation.participants.before} → ${reconciliation.participants.after}`);
+                }
+                if (certificatesCorrected) {
+                    changes.push(`certificates: ${reconciliation.certificates.before} → ${reconciliation.certificates.after}`);
+                }
+                
+                showAlert(
+                    `Counters reconciled! ${changes.join(', ')}`,
+                    'success'
+                );
+                
+                // Reload events to show updated counts
+                loadEvents();
+            } else {
+                showAlert(`Counters are already correct for "${eventTitle}"`, 'info');
+            }
+        } else {
+            showAlert('Reconciliation failed: ' + (result.data.message || 'Unknown error'), 'danger');
+        }
+    } catch (error) {
+        showAlert('Reconciliation failed: ' + error.message, 'danger');
+    }
+}
+
 // Make functions globally available
 window.signIn = signIn;
 window.signOut = signOut;
 window.showApp = showApp;
 window.showGate = showGate;
 window.runMigration = runMigration; // Make migration function available globally
+window.reconcileEventCounters = reconcileEventCounters; // Make reconciliation function available globally
 
 // Ensure gate screen is shown initially
 document.addEventListener('DOMContentLoaded', function() {

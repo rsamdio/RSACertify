@@ -9,9 +9,18 @@ let _admin: Admin | null = null;
 export function ensureAdmin(): void {
     if (_admin === null) {
         _admin = require('firebase-admin') as Admin;
-        if (!_admin.apps.length) {
-            _admin.initializeApp();
-        }
+    }
+    
+    // Check if default app exists, initialize if not
+    try {
+        // Try to get the default app - this will throw if it doesn't exist
+        _admin.app();
+    } catch (error) {
+        // Default app doesn't exist, initialize it
+        // Uses Application Default Credentials (ADC) in Cloud Functions
+        _admin.initializeApp({
+            databaseURL: 'https://rsacertify-default-rtdb.asia-southeast1.firebasedatabase.app'
+        });
     }
 }
 
@@ -23,5 +32,8 @@ export function getAdmin(): Admin {
 /** Firestore FieldValue (increment, serverTimestamp) for use in writes. */
 export function getFieldValue(): { increment(n: number): unknown; serverTimestamp(): unknown } {
     ensureAdmin();
-    return (getAdmin() as any).firestore.FieldValue;
+    // FieldValue is a static property on the firestore namespace
+    // Access it directly from the admin module, not from an instance
+    const admin = _admin!;
+    return admin.firestore.FieldValue;
 }

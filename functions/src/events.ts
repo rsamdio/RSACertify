@@ -1,5 +1,5 @@
 import * as functions from 'firebase-functions/v1';
-import { getAdmin, getFieldValue, ensureAdmin } from './admin';
+import { getAdmin, getFieldValue } from './admin';
 import { statisticsCache, eventConfigCache, getStatisticsCacheKey, getEventConfigCacheKey } from './cache';
 import { withMonitoring } from './monitoring';
 import { verifyAdmin } from './auth';
@@ -75,7 +75,7 @@ export const getEventStatistics = functions.https.onCall(
  */
 export const getEventConfig = functions.https.onCall(
     withMonitoring(async (data, context) => {
-    ensureAdmin();
+    await verifyAdmin(context);
     const { eventId } = data;
     
     if (!eventId) {
@@ -127,20 +127,39 @@ export const getEventConfig = functions.https.onCall(
 );
 
 /**
- * One-time migration function to populate initial counters for existing events
- * Can be called from admin dashboard to migrate existing data
+ * Reconcile counters for events by counting actual participants in Firestore
+ * Supports single event reconciliation (eventId provided) or all events (no eventId)
+ * Can be called from admin dashboard to fix counter discrepancies
  */
 export const migrateCounters = functions.https.onCall(
     withMonitoring(async (data, context) => {
         await verifyAdmin(context);
         try {
             const db = getAdmin().firestore();
-            const eventsSnapshot = await db.collection('events').get();
+            const { eventId } = data || {};
             
-            if (eventsSnapshot.size === 0) {
+            let eventsToProcess: Array<FirebaseFirestore.DocumentSnapshot<FirebaseFirestore.DocumentData> | FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>> = [];
+            
+            if (eventId) {
+                // Single event reconciliation
+                const eventDoc = await db.collection('events').doc(eventId).get();
+                if (!eventDoc.exists) {
+                    throw new functions.https.HttpsError(
+                        'not-found',
+                        `Event ${eventId} not found`
+                    );
+                }
+                eventsToProcess = [eventDoc];
+            } else {
+                // All events reconciliation
+                const eventsSnapshot = await db.collection('events').get();
+                eventsToProcess = eventsSnapshot.docs;
+            }
+            
+            if (eventsToProcess.length === 0) {
                 return { 
                     success: true, 
-                    message: 'No events found to migrate',
+                    message: 'No events found to reconcile',
                     processed: 0 
                 };
             }
@@ -150,14 +169,17 @@ export const migrateCounters = functions.https.onCall(
             const results: any[] = [];
             
             // Process each event
-            for (const eventDoc of eventsSnapshot.docs) {
+            for (const eventDoc of eventsToProcess) {
                 try {
-                    const eventId = eventDoc.id;
+                    const currentEventId = eventDoc.id;
+                    const eventData = eventDoc.data();
+                    const currentParticipantsCount = eventData?.participantsCount || 0;
+                    const currentCertificatesCount = eventData?.certificatesCount || 0;
                     
                     // Get all participants for this event
                     const participantsSnapshot = await db
                         .collection('events')
-                        .doc(eventId)
+                        .doc(currentEventId)
                         .collection('participants')
                         .get();
                     
@@ -166,24 +188,53 @@ export const migrateCounters = functions.https.onCall(
                     // Count downloaded certificates
                     let downloadedCount = 0;
                     participantsSnapshot.forEach(doc => {
-                        const data = doc.data();
-                        if (data.certificateStatus === 'downloaded') {
+                        const participantData = doc.data();
+                        if (participantData.certificateStatus === 'downloaded') {
                             downloadedCount++;
                         }
                     });
                     
-                    // Update event document with counts
-                    await db.collection('events').doc(eventId).update({
-                        participantsCount: totalParticipants,
-                        certificatesCount: downloadedCount,
-                        updatedAt: getFieldValue().serverTimestamp()
-                    });
+                    // Check if reconciliation is needed
+                    const needsReconciliation = 
+                        currentParticipantsCount !== totalParticipants ||
+                        currentCertificatesCount !== downloadedCount;
                     
-                    results.push({
-                        eventId,
-                        participants: totalParticipants,
-                        certificates: downloadedCount
-                    });
+                    if (needsReconciliation) {
+                        // Update event document with correct counts
+                        await db.collection('events').doc(currentEventId).update({
+                            participantsCount: totalParticipants,
+                            certificatesCount: downloadedCount,
+                            updatedAt: getFieldValue().serverTimestamp()
+                        });
+                        
+                        results.push({
+                            eventId: currentEventId,
+                            participants: {
+                                before: currentParticipantsCount,
+                                after: totalParticipants,
+                                corrected: true
+                            },
+                            certificates: {
+                                before: currentCertificatesCount,
+                                after: downloadedCount,
+                                corrected: true
+                            }
+                        });
+                    } else {
+                        results.push({
+                            eventId: currentEventId,
+                            participants: {
+                                before: currentParticipantsCount,
+                                after: totalParticipants,
+                                corrected: false
+                            },
+                            certificates: {
+                                before: currentCertificatesCount,
+                                after: downloadedCount,
+                                corrected: false
+                            }
+                        });
+                    }
                     
                     processed++;
                     
@@ -201,15 +252,18 @@ export const migrateCounters = functions.https.onCall(
                 success: true,
                 processed,
                 errors,
-                total: eventsSnapshot.size,
+                total: eventsToProcess.length,
                 results
             };
             
         } catch (error: any) {
-            console.error('Migration failed:', error);
+            if (error instanceof functions.https.HttpsError) {
+                throw error;
+            }
+            console.error('Counter reconciliation failed:', error);
             throw new functions.https.HttpsError(
                 'internal',
-                'Error migrating counters',
+                'Error reconciling counters',
                 error
             );
         }

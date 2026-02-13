@@ -19,18 +19,12 @@
           "index": {
             ".read": "auth != null",
             ".write": false
-          },
-          "changes": {
-            ".read": "auth != null",
-            ".write": false
           }
         },
         "search": {
-          ".read": true,
-          ".write": false
-        },
-        "changes": {
-          ".read": "auth != null",
+          // Internal search index used by Cloud Functions only.
+          // Public clients must use a callable (e.g., verifyCertificate) instead of reading this path directly.
+          ".read": false,
           ".write": false
         }
       }

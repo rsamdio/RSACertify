@@ -90,6 +90,15 @@ export const bulkUploadParticipants = functions.https.onCall(
         );
     }
     
+    // Enforce upper bound on participants per call to prevent abuse
+    const maxParticipantsPerCall = 5000;
+    if (participants.length > maxParticipantsPerCall) {
+        throw new functions.https.HttpsError(
+            'invalid-argument',
+            `Too many participants in a single upload. Maximum allowed is ${maxParticipantsPerCall}.`
+        );
+    }
+    
     const batchSize = 500; // Firestore limit
     let processed = 0;
     const progressRef = getAdmin().database().ref(`bulkUploads/${context.auth!.uid}/progress`);
@@ -108,13 +117,27 @@ export const bulkUploadParticipants = functions.https.onCall(
             const firestoreBatch = getAdmin().firestore().batch();
             
             batch.forEach(participant => {
+                // Basic field length validation to avoid oversized entries
+                const safeName = typeof participant.name === 'string'
+                    ? participant.name.trim().slice(0, 200)
+                    : '';
+                const rawEmail = typeof participant.email === 'string'
+                    ? participant.email.trim().toLowerCase()
+                    : '';
+                const safeEmail = rawEmail.slice(0, 254); // typical email length limit
+
+                if (!safeEmail && !safeName) {
+                    return;
+                }
+
                 const docRef = getAdmin().firestore()
                     .collection(`events/${eventId}/participants`)
                     .doc();
                 
                 firestoreBatch.set(docRef, {
                     ...participant,
-                    email: (participant.email || '').toLowerCase(),
+                    name: safeName,
+                    email: safeEmail,
                     createdAt: getFieldValue().serverTimestamp(),
                     updatedAt: getFieldValue().serverTimestamp()
                 });
@@ -162,5 +185,102 @@ export const bulkUploadParticipants = functions.https.onCall(
         );
     }
     }, 'bulkUploadParticipants')
+);
+
+/**
+ * Public certificate verification callable.
+ * Users provide eventId and a redeem value (email or redeem code).
+ * The email field serves dual purpose - it stores either an email address OR a redeem code.
+ * Returns only the minimal data needed to render a single certificate.
+ */
+export const verifyCertificate = functions.https.onCall(
+    withMonitoring(async (data, context) => {
+        const { eventId, redeem } = data || {};
+
+        if (!eventId || typeof eventId !== 'string') {
+            throw new functions.https.HttpsError(
+                'invalid-argument',
+                'eventId is required'
+            );
+        }
+
+        if (!redeem || typeof redeem !== 'string') {
+            throw new functions.https.HttpsError(
+                'invalid-argument',
+                'redeem value (email or code) is required'
+            );
+        }
+
+        const trimmed = redeem.trim();
+        if (trimmed.length < 3 || trimmed.length > 256) {
+            throw new functions.https.HttpsError(
+                'invalid-argument',
+                'Invalid redeem value'
+            );
+        }
+
+        try {
+            const db = getAdmin().firestore();
+            const normalized = trimmed.toLowerCase();
+
+            // Simple lookup: email field serves dual purpose (email OR redeem code)
+            // All participant lookups use the email field, normalized to lowercase for case-insensitive matching
+            const query = db
+                .collection('events')
+                .doc(eventId)
+                .collection('participants')
+                .where('email', '==', normalized)
+                .limit(2);
+
+            const snapshot = await query.get();
+
+            // Not found or ambiguous -> generic not-found response (no information leak)
+            if (snapshot.empty || snapshot.size !== 1) {
+                return {
+                    found: false
+                };
+            }
+
+            const doc = snapshot.docs[0];
+            const participantData = doc.data() || {};
+
+            // Check if the stored value looks like an email for masking purposes
+            const storedEmail = String(participantData.email || '');
+            const isEmailFormat = storedEmail.includes('@');
+
+            // Prepare minimal safe payload for client
+            const response: any = {
+                id: doc.id,
+                name: participantData.name || '',
+                certificateStatus: participantData.certificateStatus || 'pending',
+                // Optional fields used by certificate templates
+                additionalFields: participantData.additionalFields || {},
+                downloadedAt: participantData.downloadedAt || null,
+            };
+
+            // Optionally include masked email (only if stored value is email format)
+            if (isEmailFormat && storedEmail) {
+                const [userPart, domainPart] = storedEmail.split('@');
+                const maskedUser = userPart.length <= 2
+                    ? '*'.repeat(userPart.length)
+                    : `${userPart.slice(0, 2)}***`;
+                response.emailMasked = domainPart
+                    ? `${maskedUser}@${domainPart}`
+                    : maskedUser;
+            }
+
+            return {
+                found: true,
+                participant: response
+            };
+
+        } catch (error: any) {
+            console.error('Error verifying certificate:', error?.message || error);
+            throw new functions.https.HttpsError(
+                'internal',
+                'Error verifying certificate'
+            );
+        }
+    }, 'verifyCertificate')
 );
 

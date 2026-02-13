@@ -667,6 +667,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function setupEnhancedEventListeners() {
     const searchInput = document.getElementById('searchInput');
     const clearSearchBtn = document.getElementById('clearSearch');
+    const searchForm = document.querySelector('.search-form');
     
     searchInput.addEventListener('input', function() {
         filterEvents();
@@ -675,6 +676,17 @@ function setupEnhancedEventListeners() {
     });
     
     clearSearchBtn.addEventListener('click', clearSearchAndShowAll);
+    
+    // Prevent default form submission (avoids adding ?search= to URL)
+    // Enter key should only filter the in-page list, not reload/navigate.
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            filterEvents();
+            updateSearchResultsCount();
+            toggleClearButton();
+        });
+    }
     
     // Add smooth scrolling for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {

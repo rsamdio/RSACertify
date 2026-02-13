@@ -4,7 +4,8 @@ import { withMonitoring } from './monitoring';
 
 /**
  * Sync event metadata to Realtime Database for fast reads
- * Stores lightweight metadata: title, date, participantsCount, certificatesCount, updatedAt, createdAt
+ * Stores lightweight metadata: title, date, updatedAt, createdAt
+ * Note: Counters are stored separately in events/{eventId}/counters (synced by syncCountersToRealtime)
  */
 export const syncEventMetadataToRealtime = functions.firestore
     .document('events/{eventId}')
@@ -31,12 +32,10 @@ export const syncEventMetadataToRealtime = functions.firestore
                     return;
                 }
                 
-                // Sync lightweight metadata to Realtime DB
+                // Sync lightweight metadata to Realtime DB (exclude counters - they're in /counters)
                 const metadata = {
                     title: data.title || '',
                     date: data.date || '',
-                    participantsCount: data.participantsCount || 0,
-                    certificatesCount: data.certificatesCount || 0,
                     updatedAt: data.updatedAt?.toMillis() || Date.now(),
                     createdAt: data.createdAt?.toMillis() || Date.now()
                 };
@@ -157,81 +156,6 @@ export const syncInvitesToRealtime = functions.firestore
     );
 
 /**
- * Sync participant changes to Realtime Database for live updates
- * Writes change notifications to events/{eventId}/participants/changes/{changeId}
- */
-export const syncParticipantChangesToRealtime = functions.firestore
-    .document('events/{eventId}/participants/{participantId}')
-    .onWrite(
-        withMonitoring(async (change, context) => {
-            ensureAdmin();
-            const eventId = context.params.eventId;
-            const participantId = context.params.participantId;
-            
-            try {
-                const changesRef = getAdmin().database()
-                    .ref(`events/${eventId}/participants/changes`)
-                    .push();
-                
-                let changeType: string;
-                let changeData: any = {
-                    participantId,
-                    timestamp: Date.now()
-                };
-                
-                if (!change.after.exists) {
-                    // Participant was deleted
-                    changeType = 'deleted';
-                    const beforeData = change.before.data();
-                    if (beforeData) {
-                        changeData.fields = {
-                            name: beforeData.name,
-                            email: beforeData.email,
-                            certificateStatus: beforeData.certificateStatus
-                        };
-                    }
-                } else if (!change.before.exists) {
-                    // Participant was created
-                    changeType = 'added';
-                    const afterData = change.after.data();
-                    if (afterData) {
-                        changeData.fields = {
-                            name: afterData.name,
-                            email: afterData.email,
-                            certificateStatus: afterData.certificateStatus
-                        };
-                    }
-                } else {
-                    // Participant was updated
-                    changeType = 'updated';
-                    const beforeData = change.before.data();
-                    const afterData = change.after.data();
-                    
-                    // Track which fields changed
-                    const changedFields: any = {};
-                    if (beforeData && afterData) {
-                        if (beforeData.name !== afterData.name) changedFields.name = afterData.name;
-                        if (beforeData.email !== afterData.email) changedFields.email = afterData.email;
-                        if (beforeData.certificateStatus !== afterData.certificateStatus) {
-                            changedFields.certificateStatus = afterData.certificateStatus;
-                        }
-                    }
-                    
-                    changeData.fields = changedFields;
-                }
-                
-                changeData.type = changeType;
-                
-                await changesRef.set(changeData);
-                
-            } catch (error) {
-                console.error(`Error syncing participant change to Realtime Database for ${participantId} in event ${eventId}:`, error);
-                // Don't throw - this is a non-critical sync operation
-            }
-        }, 'syncParticipantChangesToRealtime')
-    );
-
-/**
  * Sync participant metadata index to Realtime Database
  * Maintains index: name, email, certificateStatus, updatedAt, additionalFields
  * Includes additionalFields to avoid Firestore reads for custom fields display
@@ -340,82 +264,6 @@ export const syncParticipantSearchIndex = functions.firestore
                 // Don't throw - this is a non-critical sync operation
             }
         }, 'syncParticipantSearchIndex')
-    );
-
-/**
- * Sync participant change log to Realtime Database
- * Maintains audit trail of significant field changes
- */
-export const syncParticipantChangeLog = functions.firestore
-    .document('events/{eventId}/participants/{participantId}')
-    .onUpdate(
-        withMonitoring(async (change, context) => {
-            ensureAdmin();
-            const eventId = context.params.eventId;
-            const participantId = context.params.participantId;
-            
-            try {
-                const before = change.before.data();
-                const after = change.after.data();
-                
-                if (!before || !after) {
-                    return;
-                }
-                
-                // Track significant field changes
-                const changes: any[] = [];
-                
-                // Check name changes
-                if (before.name !== after.name) {
-                    changes.push({
-                        field: 'name',
-                        oldValue: before.name || '',
-                        newValue: after.name || ''
-                    });
-                }
-                
-                // Check email changes
-                if (before.email !== after.email) {
-                    changes.push({
-                        field: 'email',
-                        oldValue: before.email || '',
-                        newValue: after.email || ''
-                    });
-                }
-                
-                // Check certificate status changes
-                if (before.certificateStatus !== after.certificateStatus) {
-                    changes.push({
-                        field: 'certificateStatus',
-                        oldValue: before.certificateStatus || 'pending',
-                        newValue: after.certificateStatus || 'pending'
-                    });
-                }
-                
-                // Only log if there are significant changes
-                if (changes.length === 0) {
-                    return;
-                }
-                
-                // Log each change
-                const changeLogRef = getAdmin().database()
-                    .ref(`events/${eventId}/changes`)
-                    .push();
-                
-                const logEntry = {
-                    participantId,
-                    changes,
-                    timestamp: Date.now(),
-                    userId: after.updatedBy || 'system' // If you track who made the change
-                };
-                
-                await changeLogRef.set(logEntry);
-                
-            } catch (error) {
-                console.error(`Error logging participant changes for ${participantId} in event ${eventId}:`, error);
-                // Don't throw - this is a non-critical logging operation
-            }
-        }, 'syncParticipantChangeLog')
     );
 
 /**

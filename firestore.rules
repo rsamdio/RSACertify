@@ -28,18 +28,9 @@ service cloud.firestore {
       
       // Participants subcollection
       match /participants/{participantId} {
-        // Public read access for certificate generation
-        allow read: if true;
-
-        // Allow participants to update their own certificate status (authenticated)
-        // OR allow anonymous users to update only certificate status fields
-        allow update: if request.auth != null && 
-                      request.auth.token.email == resource.data.email ||
-                      (request.auth == null && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['certificateStatus', 'downloadedAt', 'updatedAt']));
-
-        // Admin full access (create, update, delete)
-        allow create, update, delete: if isAdmin();
+        // Admin full access (read, create, update, delete) for participant documents
+        // Public users must go through backend callables (e.g., verifyCertificate) and cannot read or list participants directly.
+        allow read, create, update, delete: if isAdmin();
       }
       
     }
