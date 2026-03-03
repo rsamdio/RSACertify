@@ -1,4 +1,4 @@
-// Analytics Utilities for RSA Certify
+// Analytics Utilities for Rotaract Certify
 class AnalyticsUtils {
     constructor() {
         this.analytics = null;

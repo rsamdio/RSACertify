@@ -1,6 +1,6 @@
 [![Netlify Status](https://api.netlify.com/api/v1/badges/f98e6928-1e09-46de-8f9d-49a03b6287f7/deploy-status)](https://app.netlify.com/projects/rsacertify/deploys)
 
-# RSA Certify - Digital Certificate Generation Platform
+# Rotaract Certify - Digital Certificate Generation Platform
 
 A comprehensive Jekyll-based static website with **Firebase** integration for digital certificate generation, management, and distribution. Built for **Rotaract South Asia MDIO (RSAMDIO)** to enable Rotaractors to celebrate and showcase their contributions and achievements.
 
