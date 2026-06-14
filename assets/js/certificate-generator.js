@@ -144,22 +144,17 @@ class CertificateGenerator {
             // Apply each field from the event configuration
             for (const field of participantFields) {
                 let value = '';
-                
-                // Handle different field types and data sources
+
                 if (field.key === 'name') {
                     value = participant.name || '';
                 } else if (field.key === 'email') {
                     value = participant.email || '';
-                } else if (field.key === 'date') {
-                    value = new Date().toLocaleDateString();
                 } else if (participant.additionalFields && participant.additionalFields[field.key]) {
-                    // Custom field from additionalFields
                     value = participant.additionalFields[field.key] || '';
                 } else if (participant[field.key]) {
-                    // Direct field access
                     value = participant[field.key] || '';
                 }
-                
+
                 // Skip if no value and field is not required
                 if (!value && field.required !== false) {
                     continue;
@@ -199,15 +194,6 @@ class CertificateGenerator {
                 // Handle text wrapping with alignment
                 await this.renderWrappedTextWithAlignment(ctx, value, adjustedX, y, maxWidth, fontSize, textAlign);
                 
-            }
-            
-            // Add default date if not specified in fields
-            const hasDateField = participantFields.some(f => f.key === 'date');
-            if (!hasDateField) {
-                ctx.fillStyle = '#6c757d';
-                ctx.font = '18px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(`Issued on ${new Date().toLocaleDateString()}`, canvas.width / 2, canvas.height * 0.9);
             }
             
         } catch (error) {
