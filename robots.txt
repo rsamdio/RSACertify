@@ -1,0 +1,29 @@
+User-agent: *
+Allow: /
+
+# Allow all pages to be crawled
+Allow: /index.html
+Allow: /terms/
+Allow: /privacy/
+Allow: /assets/
+
+# Disallow admin and sensitive areas
+Disallow: /admin/
+
+# Disallow temporary development files
+Disallow: /_site/
+Disallow: /vendor/
+Disallow: /node_modules/
+Disallow: /.well-known/
+Disallow: /.jekyll-cache/
+Disallow: /Gemfile
+Disallow: /Gemfile.lock
+
+# Allow event pages
+Allow: /*/
+
+# Sitemap location
+Sitemap: https://certify.rsamdio.org/sitemap.xml
+
+# Crawl delay (optional - be respectful to server)
+Crawl-delay: 1
