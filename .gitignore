@@ -12,6 +12,9 @@ _site
 .well-known
 env.example
 
+# Local secret dumps — never commit
+secrets.md
+
 # Security: Firebase config with real keys
 assets/js/firebase-config-prod.js
 
