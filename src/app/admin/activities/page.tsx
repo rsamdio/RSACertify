@@ -64,7 +64,12 @@ function ActivitiesList() {
     try {
       await syncAdminClaims().catch(() => undefined);
       const { auth, rtdb } = getFirebaseServices();
-      const token = await auth.currentUser?.getIdTokenResult(true);
+      const user = auth.currentUser;
+      if (!user) {
+        setError("Sign-in session not ready. Please refresh.");
+        return;
+      }
+      const token = await user.getIdTokenResult(true);
       const role = String(token?.claims.role || "");
       const managed = (token?.claims.managed_activities || {}) as Record<string, boolean>;
       setCanCreate(role === "super" || role === "platform");
@@ -75,7 +80,7 @@ function ActivitiesList() {
         const snap = await get(ref(rtdb, "activities/catalog"));
         const value = (snap.val() as Record<string, CatalogRow> | null) ?? {};
         list = Object.values(value);
-      } else {
+      } else if (Object.keys(managed).some((slug) => managed[slug])) {
         const slugs = Object.keys(managed).filter((slug) => managed[slug]);
         const fetched = await Promise.all(
           slugs.map(async (slug) => {
@@ -84,6 +89,8 @@ function ActivitiesList() {
           })
         );
         list = fetched.filter(Boolean) as CatalogRow[];
+      } else {
+        list = [];
       }
 
       list.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));

@@ -41,6 +41,9 @@ export function middleware(_request: NextRequest) {
       "https://*.firebasestorage.app",
       "https://*.firebasedatabase.app",
       "https://*.asia-southeast1.firebasedatabase.app",
+      // RTDB client uses WebSockets — Activities list hangs without these.
+      "wss://*.firebasedatabase.app",
+      "wss://*.asia-southeast1.firebasedatabase.app",
       "https://*.cloudfunctions.net",
       "https://asia-southeast1-rsacertify.cloudfunctions.net",
       "https://*.r2.cloudflarestorage.com",
