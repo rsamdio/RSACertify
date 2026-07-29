@@ -1,3 +1,5 @@
+[![Netlify Status](https://api.netlify.com/api/v1/badges/f98e6928-1e09-46de-8f9d-49a03b6287f7/deploy-status)](https://app.netlify.com/projects/rsacertify/deploys)
+
 # Rotaract Certify
 
 Digital certificate issuing and lookup for [Rotaract South Asia MDIO](https://rsamdio.org/).
