@@ -2,6 +2,13 @@ import type { Metadata } from "next";
 import { Newsreader, Source_Sans_3 } from "next/font/google";
 import { SiteFooter } from "@/components/SiteChrome";
 import { JsonLd } from "@/components/JsonLd";
+import {
+  DEFAULT_DESCRIPTION,
+  DEFAULT_OG_IMAGE,
+  DEFAULT_SEO_KEYWORDS,
+  DEFAULT_TITLE,
+  SITE_URL
+} from "@/lib/site-seo";
 import "./globals.css";
 
 const display = Newsreader({
@@ -18,11 +25,6 @@ const body = Source_Sans_3({
   weight: ["400", "500", "600"]
 });
 
-const SITE_URL = "https://certify.rsamdio.org";
-const DEFAULT_TITLE = "Rotaract Certify | Rotaract South Asia MDIO";
-const DEFAULT_DESCRIPTION =
-  "Find your activity and download your verified certificate from Rotaract South Asia MDIO.";
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
@@ -30,6 +32,7 @@ export const metadata: Metadata = {
     template: "%s | Rotaract Certify | Rotaract South Asia MDIO"
   },
   description: DEFAULT_DESCRIPTION,
+  keywords: DEFAULT_SEO_KEYWORDS.split(",").map((k) => k.trim()),
   alternates: {
     canonical: "/"
   },
@@ -42,7 +45,7 @@ export const metadata: Metadata = {
     description: DEFAULT_DESCRIPTION,
     images: [
       {
-        url: "/assets/images/rotaractcertifyogimg.webp",
+        url: DEFAULT_OG_IMAGE,
         width: 1200,
         height: 630,
         alt: "Rotaract Certify by Rotaract South Asia MDIO"
@@ -53,7 +56,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
-    images: ["/assets/images/rotaractcertifyogimg.webp"]
+    images: [DEFAULT_OG_IMAGE]
   },
   icons: {
     icon: "/favicon.webp"

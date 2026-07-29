@@ -25,9 +25,9 @@ This is not a Jekyll or Decap CMS site. Do not restore legacy layouts, static HT
 
 The activity editor tab order is fixed:
 
-**Details → Design → Placement → People → Managers**
+**Details → Design → People → Placement → Managers**
 
-The forward controls follow **Design → Placement → People → Managers**. New activities open on Design. Design keys must be lowercase letters, digits, hyphens, or underscores; use the UI hint `gold / silver / bronze`.
+The forward controls follow **Design → People → Placement → Managers**. New activities open on Design. Design keys must be lowercase letters, digits, hyphens, or underscores; use the UI hint `gold / silver / bronze`. Certificate fields live on People (needed before Placement).
 
 The public organizer guide is at `/playbook`. The footer’s Explore section does not link to Library or duplicate the playbook link; Rotaract Library remains a card under “More from RSAMDIO.”
 

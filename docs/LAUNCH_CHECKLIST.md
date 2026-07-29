@@ -23,7 +23,7 @@
 ## Seed and validate a pilot
 
 1. Create one to three real activities and make them Active.
-2. Follow the fixed editor sequence: Details → Design → Placement → People → Managers.
+2. Follow the fixed editor sequence: Details → Design → People → Placement → Managers.
 3. Upload certificate designs whose longest edge is at most 3000 px. Use distinct design keys such as `gold`, `silver`, and `bronze`.
 4. Add people by CSV or a public Google Sheet, then spot-check lookup and PDF download.
 5. Verify a public sheet can be read without authentication. Private Sheets are unsupported; there is no Netlify service account.

@@ -30,6 +30,7 @@ import { renderCertificateCanvas } from "@/lib/certificate/renderer";
 import { CERTIFICATE_FONTS, normalizeHexColor } from "@/lib/certificate-fonts";
 import { slugify } from "@/lib/activity-defaults";
 import { fetchAuthedRtdbJson } from "@/lib/rtdb-rest";
+import { DEFAULT_SEO_KEYWORDS } from "@/lib/site-seo";
 import {
   addFieldPlacementToAllDesigns,
   hydrateActivityPlacements,
@@ -70,8 +71,8 @@ type ImportMode = "source" | "pickSheet" | "review";
 const TABS: Array<[TabKey, string]> = [
   ["details", "Details"],
   ["templates", "Design"],
-  ["layout", "Placement"],
   ["participants", "People"],
+  ["layout", "Placement"],
   ["managers", "Managers"]
 ];
 
@@ -468,9 +469,18 @@ export function ActivityEditorClient({ slug }: Props) {
     try {
       const { db } = getFirebaseServices();
       const removeKeys = options?.removeTemplateKeys || [];
+      const { seo, ...rest } = next;
+      const keywords =
+        String(seo?.keywords || "").trim() || DEFAULT_SEO_KEYWORDS;
+      const seoRest = Object.fromEntries(
+        Object.entries({ ...(seo || {}), keywords }).filter(
+          ([key, value]) => key !== "ogImage" && value !== undefined && value !== ""
+        )
+      );
       const payload: Record<string, unknown> = {
-        ...next,
-        updatedAt: serverTimestamp()
+        ...rest,
+        updatedAt: serverTimestamp(),
+        seo: Object.keys(seoRest).length ? seoRest : { keywords: DEFAULT_SEO_KEYWORDS }
       };
       if (removeKeys.length) {
         const templatesWrite: Record<string, unknown> = { ...(next.templates || {}) };
@@ -479,8 +489,16 @@ export function ActivityEditorClient({ slug }: Props) {
         }
         payload.templates = templatesWrite;
       }
+      // Drop any other undefined fields from the activity spread.
+      for (const key of Object.keys(payload)) {
+        if (payload[key] === undefined) delete payload[key];
+      }
       await setDoc(doc(db, "activities", slug), payload, { merge: true });
-      setActivity(next);
+      const savedSeo = (payload.seo || { keywords: DEFAULT_SEO_KEYWORDS }) as Activity["seo"];
+      setActivity({
+        ...next,
+        seo: savedSeo
+      });
       flashOk(okMessage);
       return true;
     } catch (err) {
@@ -561,12 +579,7 @@ export function ActivityEditorClient({ slug }: Props) {
     if (!activity) return;
     const publishing = activity.status === "active";
     // Slug renames are intentional and go through requestSlugUpdate — never via Save details.
-    // Sitewide OG image only — do not persist per-activity share image URLs.
-    const { ogImage: _dropOg, ...seoRest } = activity.seo || {};
-    const ok = await saveActivity(
-      { ...activity, slug, seo: Object.keys(seoRest).length ? seoRest : undefined },
-      "Details saved."
-    );
+    const ok = await saveActivity({ ...activity, slug }, "Details saved.");
     if (ok && publishing) {
       setShareOpen(true);
     }
@@ -1703,8 +1716,11 @@ export function ActivityEditorClient({ slug }: Props) {
                     seo: { ...(activity.seo || {}), keywords: e.target.value }
                   })
                 }
-                placeholder="Rotaract, certificate, South Asia"
+                placeholder={DEFAULT_SEO_KEYWORDS}
               />
+              <p className="meta" style={{ margin: "0.35rem 0 0" }}>
+                Leave blank to use the site default keywords on save.
+              </p>
             </div>
             <div className="row">
               <button className="btn" type="submit" disabled={saving}>
@@ -2156,8 +2172,8 @@ export function ActivityEditorClient({ slug }: Props) {
           <div className="card admin-panel stack">
             <div className="row" style={{ justifyContent: "space-between" }}>
               <h3 style={{ margin: 0 }}>People ({participants.length})</h3>
-              <button className="btn btn-secondary" type="button" onClick={() => setTab("managers")}>
-                Next: Managers →
+              <button className="btn btn-secondary" type="button" onClick={() => setTab("layout")}>
+                Next: Placement →
               </button>
             </div>
             <input
@@ -2341,8 +2357,8 @@ export function ActivityEditorClient({ slug }: Props) {
           <form className="card admin-panel form-grid" onSubmit={onUploadTemplate}>
             <p className="meta" style={{ marginTop: 0 }}>
               Upload certificate designs (e.g. gold, silver, bronze). Each needs a unique design key —
-              used when assigning designs to people. Field positions are shared; preview each artwork on
-              Placement.
+              used when assigning designs to people. Configure certificate fields on People, then place
+              them on each artwork under Placement.
             </p>
             <div className="form-grid two">
               <div className="field">
@@ -2388,8 +2404,8 @@ export function ActivityEditorClient({ slug }: Props) {
               >
                 {saving ? "Uploading…" : "Upload design"}
               </button>
-              <button className="btn btn-secondary" type="button" onClick={() => setTab("layout")}>
-                Next: Placement →
+              <button className="btn btn-secondary" type="button" onClick={() => setTab("participants")}>
+                Next: People →
               </button>
             </div>
           </form>
@@ -2749,8 +2765,8 @@ export function ActivityEditorClient({ slug }: Props) {
                   >
                     {saving ? "Saving…" : "Save placement"}
                   </button>
-                  <button className="btn btn-secondary" type="button" onClick={() => setTab("participants")}>
-                    Next: People →
+                  <button className="btn btn-secondary" type="button" onClick={() => setTab("managers")}>
+                    Next: Managers →
                   </button>
                 </div>
               </div>

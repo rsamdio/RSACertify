@@ -67,7 +67,7 @@ function AuthEntryShell({
             <h3>Manage activities</h3>
             <p>
               Follow the{" "}
-              <Link href="/playbook">organizer playbook</Link>: designs, placement, people, then
+              <Link href="/playbook">organizer playbook</Link>: designs, people, placement, then
               publish. More templates live in the{" "}
               <a href="https://library.rsamdio.org/" target="_blank" rel="noopener noreferrer">
                 Rotaract Library

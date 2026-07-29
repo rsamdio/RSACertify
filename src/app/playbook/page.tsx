@@ -21,12 +21,12 @@ const STEPS = [
     body: "Add one or more PNG certificate designs (for example gold, silver, bronze). Give each design a short key. Keep the longest edge at or under 3000px so downloads stay reliable on phones."
   },
   {
-    title: "Place text on each design",
-    body: "On Placement, position name and other certificate fields on the artwork. Each design can have its own layout. Use a tablet or desktop for drag-to-position."
+    title: "Add people and certificate fields",
+    body: "Define which columns appear on certificates, then import a CSV or Google Sheet, or add people one by one. Every person needs a unique lookup (email or redeem code). Assign a design key when you use more than one artwork."
   },
   {
-    title: "Add people",
-    body: "Import a CSV or Google Sheet, or add people one by one. Every person needs a unique lookup (email or redeem code). Assign a design key when you use more than one artwork."
+    title: "Place text on each design",
+    body: "On Placement, position name and other certificate fields on the artwork. Each design can have its own layout. Use a tablet or desktop for drag-to-position."
   },
   {
     title: "Publish and share",
@@ -55,7 +55,7 @@ export default function PlaybookPage() {
         </div>
         <h1 className="activity-hero-title">Organizer playbook</h1>
         <p className="activity-hero-lead">
-          Follow this order in the admin workspace: Details → Design → Placement → People →
+          Follow this order in the admin workspace: Details → Design → People → Placement →
           Managers.
         </p>
       </section>

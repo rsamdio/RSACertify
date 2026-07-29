@@ -4,6 +4,7 @@ import { getActivityBySlug } from "@/lib/server-data";
 import { BrandMasthead } from "@/components/BrandMasthead";
 import { JsonLd } from "@/components/JsonLd";
 import { SoftScrollLink } from "@/components/SoftScroll";
+import { DEFAULT_OG_IMAGE, DEFAULT_SEO_KEYWORDS, SITE_URL } from "@/lib/site-seo";
 import { ActivityClient } from "./ActivityClient";
 import { ActivityOpenTracker } from "./ActivityOpenTracker";
 
@@ -32,11 +33,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     activity.description ||
     `Download your verified certificate for ${activity.title} from Rotaract Certify.`;
-  const ogImage = "/assets/images/rotaractcertifyogimg.webp";
-  const url = `https://certify.rsamdio.org/${activity.slug}/`;
+  const ogImage = DEFAULT_OG_IMAGE;
+  const keywords =
+    activity.seo?.keywords?.trim() || DEFAULT_SEO_KEYWORDS;
+  const url = `${SITE_URL}/${activity.slug}/`;
   return {
     title,
     description,
+    keywords: keywords.split(",").map((k) => k.trim()).filter(Boolean),
     alternates: { canonical: url },
     openGraph: {
       title: `${title} | Rotaract Certify | Rotaract South Asia MDIO`,
