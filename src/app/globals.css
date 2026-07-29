@@ -2113,43 +2113,49 @@ textarea {
 .placement-box {
   position: absolute;
   box-sizing: border-box;
-  border: 1.5px dashed rgba(217, 27, 92, 0.85);
-  background: rgba(217, 27, 92, 0.06);
+  border: 1.5px dashed rgba(217, 27, 92, 0.9);
+  background: rgba(217, 27, 92, 0.03);
   border-radius: 2px;
   pointer-events: auto;
-  cursor: default;
+  cursor: grab;
+  touch-action: none;
   min-height: 18px;
+}
+
+.placement-box.is-dragging,
+.placement-box:active {
+  cursor: grabbing;
 }
 
 .placement-guide.is-active .placement-box {
   border-color: var(--cranberry);
-  background: rgba(217, 27, 92, 0.1);
-  box-shadow: 0 0 0 1px rgba(217, 27, 92, 0.15);
+  background: rgba(217, 27, 92, 0.05);
+  box-shadow: 0 0 0 1px rgba(217, 27, 92, 0.12);
 }
 
-.placement-resize {
+/* Invisible edge hit-zones — resize without a visible handle covering the text area. */
+.placement-edge {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 12px;
+  top: -2px;
+  bottom: -2px;
+  width: 10px;
   cursor: ew-resize;
   touch-action: none;
   pointer-events: auto;
+  background: transparent;
 }
 
-.placement-resize::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: 2px;
-  width: 6px;
-  height: min(18px, 100%);
-  transform: translateY(-50%);
-  border-radius: 3px;
-  background: var(--cranberry);
-  border: 1.5px solid #fff;
-  box-shadow: 0 1px 4px rgba(42, 34, 37, 0.3);
+.placement-edge-w {
+  left: -5px;
+}
+
+.placement-edge-e {
+  right: -5px;
+}
+
+.placement-guide.is-active .placement-edge-w:hover,
+.placement-guide.is-active .placement-edge-e:hover {
+  background: rgba(217, 27, 92, 0.12);
 }
 
 .admin-collapse.is-placement-active {

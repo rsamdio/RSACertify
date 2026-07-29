@@ -165,7 +165,7 @@ function guideModeHint(mode: PlacementGuideMode): string {
     case "bubble":
       return "Drag a marker to reposition. Arrow keys nudge the selected field (Shift for finer steps).";
     case "box":
-      return "Dotted box shows text width. Drag the marker to move, or the right edge to resize width.";
+      return "Drag inside the box to move it. Drag the left or right edge to resize width.";
     case "clean":
       return "Guides hidden — edit positions and width in the left panel, or switch guides back on.";
     default: {
@@ -276,6 +276,9 @@ export function ActivityEditorClient({ slug }: Props) {
   const [stageSize, setStageSize] = useState({ w: 420, h: 300 });
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
   const [resizingKey, setResizingKey] = useState<string | null>(null);
+  const [resizeEdge, setResizeEdge] = useState<"e" | "w" | null>(null);
+  const boxDragOffsetRef = useRef<{ dx: number; dy: number } | null>(null);
+  const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function flashOk(text: string) {
@@ -1144,6 +1147,7 @@ export function ActivityEditorClient({ slug }: Props) {
   function onHandlePointerDown(fieldKey: string, e: ReactPointerEvent<HTMLDivElement>) {
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
+    boxDragOffsetRef.current = null;
     setDraggingKey(fieldKey);
     setSelectedPlacementKey(fieldKey);
   }
@@ -1154,8 +1158,19 @@ export function ActivityEditorClient({ slug }: Props) {
     if (!stage) return;
     const rect = stage.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    const xPct = clamp(((e.clientX - rect.left) / rect.width) * 100, 0, 100);
-    const yPct = clamp(((e.clientY - rect.top) / rect.height) * 100, 0, 100);
+    const pointerX = ((e.clientX - rect.left) / rect.width) * 100;
+    const pointerY = ((e.clientY - rect.top) / rect.height) * 100;
+    if (boxDragOffsetRef.current) {
+      const { dx, dy } = boxDragOffsetRef.current;
+      const field = placementFields.find((row) => row.field.key === fieldKey)?.field;
+      const widthPct = parsePercentNumber(field?.width ?? "70%", 70);
+      const xPct = clamp(pointerX - dx, 0, Math.max(0, 100 - widthPct));
+      const yPct = clamp(pointerY - dy, 0, 100);
+      updatePlacement(fieldKey, { x: `${xPct.toFixed(1)}%`, y: `${yPct.toFixed(1)}%` });
+      return;
+    }
+    const xPct = clamp(pointerX, 0, 100);
+    const yPct = clamp(pointerY, 0, 100);
     updatePlacement(fieldKey, { x: `${xPct.toFixed(1)}%`, y: `${yPct.toFixed(1)}%` });
   }
 
@@ -1163,35 +1178,74 @@ export function ActivityEditorClient({ slug }: Props) {
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
+    boxDragOffsetRef.current = null;
     setDraggingKey(null);
   }
 
-  function onResizePointerDown(fieldKey: string, e: ReactPointerEvent<HTMLDivElement>) {
+  function onBoxMovePointerDown(fieldKey: string, e: ReactPointerEvent<HTMLDivElement>) {
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
+    const stage = stageRef.current;
+    const field = placementFields.find((row) => row.field.key === fieldKey)?.field;
+    if (!stage || !field) return;
+    const rect = stage.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const xPct = parsePercentNumber(field.x ?? "50%");
+    const yPct = parsePercentNumber(field.y ?? "50%");
+    const pointerX = ((e.clientX - rect.left) / rect.width) * 100;
+    const pointerY = ((e.clientY - rect.top) / rect.height) * 100;
+    boxDragOffsetRef.current = { dx: pointerX - xPct, dy: pointerY - yPct };
+    setDraggingKey(fieldKey);
+    setSelectedPlacementKey(fieldKey);
+  }
+
+  function onResizePointerDown(
+    fieldKey: string,
+    edge: "e" | "w",
+    e: ReactPointerEvent<HTMLDivElement>
+  ) {
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const field = placementFields.find((row) => row.field.key === fieldKey)?.field;
+    if (!field) return;
+    resizeStartRef.current = {
+      x: parsePercentNumber(field.x ?? "50%"),
+      width: parsePercentNumber(field.width ?? "70%", 70)
+    };
     setResizingKey(fieldKey);
+    setResizeEdge(edge);
     setSelectedPlacementKey(fieldKey);
   }
 
   function onResizePointerMove(fieldKey: string, e: ReactPointerEvent<HTMLDivElement>) {
-    if (resizingKey !== fieldKey) return;
+    if (resizingKey !== fieldKey || !resizeEdge || !resizeStartRef.current) return;
     const stage = stageRef.current;
     if (!stage) return;
     const rect = stage.getBoundingClientRect();
     if (!rect.width) return;
-    const field = placementFields.find((row) => row.field.key === fieldKey)?.field;
-    if (!field) return;
-    const xPct = parsePercentNumber(field.x ?? "50%");
     const pointerPct = ((e.clientX - rect.left) / rect.width) * 100;
-    const widthPct = clamp(pointerPct - xPct, 5, Math.max(5, 100 - xPct));
-    updatePlacement(fieldKey, { width: `${widthPct.toFixed(1)}%` });
+    const { x: startX, width: startWidth } = resizeStartRef.current;
+    if (resizeEdge === "e") {
+      const widthPct = clamp(pointerPct - startX, 5, Math.max(5, 100 - startX));
+      updatePlacement(fieldKey, { width: `${widthPct.toFixed(1)}%` });
+      return;
+    }
+    const rightEdge = startX + startWidth;
+    const xPct = clamp(pointerPct, 0, Math.max(0, rightEdge - 5));
+    const widthPct = clamp(rightEdge - xPct, 5, rightEdge);
+    updatePlacement(fieldKey, {
+      x: `${xPct.toFixed(1)}%`,
+      width: `${widthPct.toFixed(1)}%`
+    });
   }
 
   function onResizePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
+    resizeStartRef.current = null;
     setResizingKey(null);
+    setResizeEdge(null);
   }
 
   function removeField(index: number) {
@@ -3039,36 +3093,47 @@ export function ActivityEditorClient({ slug }: Props) {
                           >
                             {guideMode === "box" ? (
                               <div
-                                className="placement-box"
+                                className={`placement-box${draggingKey === field.key ? " is-dragging" : ""}`}
                                 style={{
                                   left: `${xPct}%`,
                                   top: `calc(${yPct}% - ${ascent.toFixed(1)}px)`,
                                   width: `${widthPct}%`,
                                   height: `${Math.max(18, boxHeight).toFixed(1)}px`
                                 }}
-                                onPointerDown={() => setSelectedPlacementKey(field.key)}
-                                title={`${field.label || field.key} · ${widthPct.toFixed(1)}% wide`}
+                                onPointerDown={(e) => onBoxMovePointerDown(field.key, e)}
+                                onPointerMove={(e) => onHandlePointerMove(field.key, e)}
+                                onPointerUp={onHandlePointerUp}
+                                title={`${field.label || field.key} · drag to move · edges resize width`}
                               >
                                 <div
-                                  className="placement-resize"
-                                  onPointerDown={(e) => onResizePointerDown(field.key, e)}
+                                  className="placement-edge placement-edge-w"
+                                  onPointerDown={(e) => onResizePointerDown(field.key, "w", e)}
+                                  onPointerMove={(e) => onResizePointerMove(field.key, e)}
+                                  onPointerUp={onResizePointerUp}
+                                  title="Drag to resize width"
+                                />
+                                <div
+                                  className="placement-edge placement-edge-e"
+                                  onPointerDown={(e) => onResizePointerDown(field.key, "e", e)}
                                   onPointerMove={(e) => onResizePointerMove(field.key, e)}
                                   onPointerUp={onResizePointerUp}
                                   title="Drag to resize width"
                                 />
                               </div>
                             ) : null}
-                            <div
-                              className="placement-handle"
-                              style={{
-                                left: `${xPct}%`,
-                                top: `${yPct}%`
-                              }}
-                              onPointerDown={(e) => onHandlePointerDown(field.key, e)}
-                              onPointerMove={(e) => onHandlePointerMove(field.key, e)}
-                              onPointerUp={onHandlePointerUp}
-                              title={field.label || field.key}
-                            />
+                            {guideMode === "bubble" ? (
+                              <div
+                                className="placement-handle"
+                                style={{
+                                  left: `${xPct}%`,
+                                  top: `${yPct}%`
+                                }}
+                                onPointerDown={(e) => onHandlePointerDown(field.key, e)}
+                                onPointerMove={(e) => onHandlePointerMove(field.key, e)}
+                                onPointerUp={onHandlePointerUp}
+                                title={field.label || field.key}
+                              />
+                            ) : null}
                           </div>
                         );
                       })
