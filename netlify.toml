@@ -34,6 +34,14 @@
     Cache-Control = "no-cache, no-store, must-revalidate"
     X-Robots-Tag = "noindex, nofollow"
 
+# Static assets (images, fonts, etc.) must be cross-origin readable so that
+# social-media crawlers (Facebook, Twitter, LinkedIn) can fetch OG images.
+# Override the same-site CORP set by the wildcard rule above.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cross-Origin-Resource-Policy = "cross-origin"
+
 [[redirects]]
   from = "/.env"
   to = "/404.html"
