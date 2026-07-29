@@ -190,6 +190,7 @@ export function ActivityEditorClient({ slug }: Props) {
   const [editDesignFile, setEditDesignFile] = useState<File | null>(null);
 
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
+  const [peopleLoaded, setPeopleLoaded] = useState(false);
   const [participantQuery, setParticipantQuery] = useState("");
   const [peoplePage, setPeoplePage] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
@@ -301,6 +302,7 @@ export function ActivityEditorClient({ slug }: Props) {
     const user = auth.currentUser;
     if (!user) {
       setParticipants([]);
+      setPeopleLoaded(true);
       return;
     }
     const idToken = await user.getIdToken();
@@ -312,7 +314,13 @@ export function ActivityEditorClient({ slug }: Props) {
     const rows = Object.entries(value).map(([id, row]) => ({ ...row, id }));
     rows.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
     setParticipants(rows);
+    setPeopleLoaded(true);
   }
+
+  useEffect(() => {
+    setPeopleLoaded(false);
+    setParticipants([]);
+  }, [slug]);
 
   useEffect(() => {
     if (tab !== "participants") return;
@@ -325,6 +333,7 @@ export function ActivityEditorClient({ slug }: Props) {
         if (!cancelled) {
           setError("Unable to load people. Please switch tabs and try again.");
           setParticipants([]);
+          setPeopleLoaded(true);
         }
       }
     })();
@@ -360,12 +369,14 @@ export function ActivityEditorClient({ slug }: Props) {
 
   const peoplePageCount = Math.max(1, Math.ceil(filteredParticipants.length / PEOPLE_PAGE_SIZE) || 1);
 
-  const downloadedCount = useMemo(
-    () => participants.filter((p) => p.certificateStatus === "downloaded").length,
-    [participants]
-  );
+  const peopleCount = peopleLoaded
+    ? participants.length
+    : Number(activity?.participantsCount || 0);
+  const downloadedCount = peopleLoaded
+    ? participants.filter((p) => p.certificateStatus === "downloaded").length
+    : Number(activity?.certificatesCount || 0);
   const downloadPercent =
-    participants.length > 0 ? Math.round((downloadedCount / participants.length) * 100) : 0;
+    peopleCount > 0 ? Math.round((downloadedCount / peopleCount) * 100) : 0;
 
   const customFields = useMemo(
     () => (activity ? activity.participantFields.filter(isCustomField) : []),
@@ -1505,7 +1516,7 @@ export function ActivityEditorClient({ slug }: Props) {
           <h1>{activity.title}</h1>
           <p className="meta">
             /{activity.slug} · <span className={`badge badge-${activity.status}`}>{activity.status}</span>
-            {` · ${participants.length} ${participants.length === 1 ? "person" : "people"}`}
+            {` · ${peopleCount} ${peopleCount === 1 ? "person" : "people"}`}
             {` · ${downloadedCount} downloaded (${downloadPercent}%)`}
           </p>
         </div>
