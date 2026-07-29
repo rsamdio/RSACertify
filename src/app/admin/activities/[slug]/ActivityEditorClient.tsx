@@ -123,15 +123,56 @@ function designKeyInputError(raw: string): string {
   return "";
 }
 
-function toPercent(value: string | number): string {
-  if (typeof value === "number") return `${((value / 794) * 100).toFixed(1)}%`;
-  if (value.includes("%")) return value;
-  const num = parseFloat(value);
-  return Number.isFinite(num) ? `${num}%` : "50%";
+type PlacementGuideMode = "bubble" | "box" | "clean";
+
+const GUIDE_STORAGE_KEY = "rsacertify.placementGuideMode";
+
+function parsePercentNumber(value: string | number | undefined, fallback = 50): number {
+  if (value == null) return fallback;
+  if (typeof value === "number") return (value / 794) * 100;
+  const trimmed = String(value).trim();
+  if (!trimmed) return fallback;
+  const n = parseFloat(trimmed);
+  return Number.isFinite(n) ? n : fallback;
 }
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+/** Display value for percent inputs (number only; storage always keeps the % suffix). */
+function formatPercentInput(value: string | number | undefined, fallback = 50): string {
+  const n = parsePercentNumber(value, fallback);
+  return String(Number(n.toFixed(1)));
+}
+
+function percentFromInput(raw: string): string | null {
+  const cleaned = raw.trim().replace(/%/g, "");
+  if (cleaned === "" || cleaned === "-" || cleaned === "." || cleaned === "-.") return null;
+  const n = parseFloat(cleaned);
+  if (!Number.isFinite(n)) return null;
+  return `${clamp(n, 0, 100)}%`;
+}
+
+function defaultSampleForField(field: ParticipantField): string {
+  if (field.key === "name") return "Sample Participant";
+  if (field.key === "lookup") return "sample@example.com";
+  return field.label || field.key;
+}
+
+function guideModeHint(mode: PlacementGuideMode): string {
+  switch (mode) {
+    case "bubble":
+      return "Drag a marker to reposition. Arrow keys nudge the selected field (Shift for finer steps).";
+    case "box":
+      return "Dotted box shows text width. Drag the marker to move, or the right edge to resize width.";
+    case "clean":
+      return "Guides hidden — edit positions and width in the left panel, or switch guides back on.";
+    default: {
+      const _exhaustive: never = mode;
+      return _exhaustive;
+    }
+  }
 }
 
 function csvEscape(value: unknown): string {
@@ -181,7 +222,7 @@ export function ActivityEditorClient({ slug }: Props) {
   const [canDelete, setCanDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const [previewName, setPreviewName] = useState("Sample Participant");
+  const [previewSamples, setPreviewSamples] = useState<Record<string, string>>({});
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewTemplateKey, setPreviewTemplateKey] = useState("");
   const [designName, setDesignName] = useState("");
@@ -196,6 +237,8 @@ export function ActivityEditorClient({ slug }: Props) {
   const [peoplePage, setPeoplePage] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
   const [placementMobileGate, setPlacementMobileGate] = useState(false);
+  const [guideMode, setGuideMode] = useState<PlacementGuideMode>("bubble");
+  const [selectedPlacementKey, setSelectedPlacementKey] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [newLookup, setNewLookup] = useState("");
   const [newDesignKey, setNewDesignKey] = useState("");
@@ -230,7 +273,9 @@ export function ActivityEditorClient({ slug }: Props) {
   const [slugBusy, setSlugBusy] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
+  const [stageSize, setStageSize] = useState({ w: 420, h: 300 });
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const [resizingKey, setResizingKey] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function flashOk(text: string) {
@@ -297,6 +342,37 @@ export function ActivityEditorClient({ slug }: Props) {
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
   }, [tab]);
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(GUIDE_STORAGE_KEY);
+      if (stored === "bubble" || stored === "box" || stored === "clean") {
+        setGuideMode(stored);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab !== "layout") return;
+    const el = stageRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const sync = () => setStageSize({ w: el.clientWidth || 420, h: el.clientHeight || 300 });
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [tab, previewUrl]);
+
+  function setGuideModePersist(mode: PlacementGuideMode) {
+    setGuideMode(mode);
+    try {
+      sessionStorage.setItem(GUIDE_STORAGE_KEY, mode);
+    } catch {
+      // ignore storage errors
+    }
+  }
 
   async function reloadParticipants() {
     const { auth } = getFirebaseServices();
@@ -395,6 +471,25 @@ export function ActivityEditorClient({ slug }: Props) {
       .map((field) => ({ field }))
       .filter(({ field }) => field.onCertificate !== false);
   }, [activity, activeDesignKey]);
+
+  useEffect(() => {
+    if (!placementFields.length) return;
+    setPreviewSamples((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const { field } of placementFields) {
+        if (next[field.key] === undefined) {
+          next[field.key] = defaultSampleForField(field);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    setSelectedPlacementKey((prev) => {
+      if (prev && placementFields.some(({ field }) => field.key === prev)) return prev;
+      return placementFields[0]?.field.key ?? null;
+    });
+  }, [placementFields]);
 
   const hasTemplate = Boolean(activity && Object.keys(activity.templates || {}).length > 0);
   const canPlaceFields = hasTemplate && placementFields.length > 0;
@@ -1010,6 +1105,95 @@ export function ActivityEditorClient({ slug }: Props) {
     });
   }
 
+  useEffect(() => {
+    if (tab !== "layout" || !selectedPlacementKey || guideMode === "clean") return;
+    const fieldKey = selectedPlacementKey;
+
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+      e.preventDefault();
+      const field = placementFields.find((row) => row.field.key === fieldKey)?.field;
+      if (!field) return;
+      const step = e.shiftKey ? 0.1 : 0.5;
+      let x = parsePercentNumber(field.x ?? "50%");
+      let y = parsePercentNumber(field.y ?? "50%");
+      if (e.key === "ArrowLeft") x -= step;
+      if (e.key === "ArrowRight") x += step;
+      if (e.key === "ArrowUp") y -= step;
+      if (e.key === "ArrowDown") y += step;
+      updatePlacement(fieldKey, {
+        x: `${clamp(x, 0, 100).toFixed(1)}%`,
+        y: `${clamp(y, 0, 100).toFixed(1)}%`
+      });
+    }
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tab, selectedPlacementKey, guideMode, placementFields, previewTemplateKey]);
+
+  function onHandlePointerDown(fieldKey: string, e: ReactPointerEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDraggingKey(fieldKey);
+    setSelectedPlacementKey(fieldKey);
+  }
+
+  function onHandlePointerMove(fieldKey: string, e: ReactPointerEvent<HTMLDivElement>) {
+    if (draggingKey !== fieldKey) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const xPct = clamp(((e.clientX - rect.left) / rect.width) * 100, 0, 100);
+    const yPct = clamp(((e.clientY - rect.top) / rect.height) * 100, 0, 100);
+    updatePlacement(fieldKey, { x: `${xPct.toFixed(1)}%`, y: `${yPct.toFixed(1)}%` });
+  }
+
+  function onHandlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    setDraggingKey(null);
+  }
+
+  function onResizePointerDown(fieldKey: string, e: ReactPointerEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setResizingKey(fieldKey);
+    setSelectedPlacementKey(fieldKey);
+  }
+
+  function onResizePointerMove(fieldKey: string, e: ReactPointerEvent<HTMLDivElement>) {
+    if (resizingKey !== fieldKey) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    if (!rect.width) return;
+    const field = placementFields.find((row) => row.field.key === fieldKey)?.field;
+    if (!field) return;
+    const xPct = parsePercentNumber(field.x ?? "50%");
+    const pointerPct = ((e.clientX - rect.left) / rect.width) * 100;
+    const widthPct = clamp(pointerPct - xPct, 5, Math.max(5, 100 - xPct));
+    updatePlacement(fieldKey, { width: `${widthPct.toFixed(1)}%` });
+  }
+
+  function onResizePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    setResizingKey(null);
+  }
+
   function removeField(index: number) {
     if (!activity) return;
     const field = activity.participantFields[index];
@@ -1455,29 +1639,6 @@ export function ActivityEditorClient({ slug }: Props) {
     });
   }
 
-  function onHandlePointerDown(fieldKey: string, e: ReactPointerEvent<HTMLDivElement>) {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setDraggingKey(fieldKey);
-  }
-
-  function onHandlePointerMove(fieldKey: string, e: ReactPointerEvent<HTMLDivElement>) {
-    if (draggingKey !== fieldKey) return;
-    const stage = stageRef.current;
-    if (!stage) return;
-    const rect = stage.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const xPct = clamp(((e.clientX - rect.left) / rect.width) * 100, 0, 100);
-    const yPct = clamp(((e.clientY - rect.top) / rect.height) * 100, 0, 100);
-    updatePlacement(fieldKey, { x: `${xPct.toFixed(1)}%`, y: `${yPct.toFixed(1)}%` });
-  }
-
-  function onHandlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-    setDraggingKey(null);
-  }
-
   // Debounced live preview regeneration while placing fields.
   useEffect(() => {
     if (tab !== "layout" || !activity) return;
@@ -1490,14 +1651,15 @@ export function ActivityEditorClient({ slug }: Props) {
       const sampleAdditional: Record<string, string> = {};
       for (const field of fields) {
         if (!isCustomField(field)) continue;
-        sampleAdditional[field.key] = field.label || field.key;
+        sampleAdditional[field.key] =
+          previewSamples[field.key] ?? defaultSampleForField(field);
       }
       renderCertificateCanvas({
         templateUrl,
         participant: {
           id: "preview",
-          name: previewName,
-          lookup: "sample@example.com",
+          name: previewSamples.name ?? "Sample Participant",
+          lookup: previewSamples.lookup ?? "sample@example.com",
           additionalFields: sampleAdditional
         },
         fields
@@ -1511,7 +1673,7 @@ export function ActivityEditorClient({ slug }: Props) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [activity, previewName, previewTemplateKey, tab]);
+  }, [activity, previewSamples, previewTemplateKey, tab]);
 
   if (loading) return <div className="card admin-panel">Loading activity…</div>;
   if (!activity) return <div className="card admin-panel status-error">{error || "Activity not found."}</div>;
@@ -2603,21 +2765,41 @@ export function ActivityEditorClient({ slug }: Props) {
                       field.font_family ? ` · ${field.font_family}` : ""
                     }${field.bold ? " · bold" : ""}${field.italic ? " · italic" : ""}`}
                     defaultOpen={panelIndex === 0}
+                    active={selectedPlacementKey === field.key}
+                    onOpenChange={(open) => {
+                      if (open) setSelectedPlacementKey(field.key);
+                    }}
                   >
-                    <div className="field">
-                      <label>X position</label>
+                    <div className="field" style={{ gridColumn: "1 / -1" }}>
+                      <label htmlFor={`sample-${field.key}`}>Sample text</label>
                       <input
-                        value={String(field.x ?? "50%")}
-                        placeholder="50%"
-                        onChange={(e) => updatePlacement(field.key, { x: e.target.value })}
+                        id={`sample-${field.key}`}
+                        value={previewSamples[field.key] ?? defaultSampleForField(field)}
+                        onChange={(e) =>
+                          setPreviewSamples((prev) => ({ ...prev, [field.key]: e.target.value }))
+                        }
+                        onFocus={() => setSelectedPlacementKey(field.key)}
+                        placeholder={defaultSampleForField(field)}
                       />
                     </div>
                     <div className="field">
-                      <label>Y position</label>
-                      <input
-                        value={String(field.y ?? "48%")}
-                        placeholder="48%"
-                        onChange={(e) => updatePlacement(field.key, { y: e.target.value })}
+                      <label htmlFor={`x-${field.key}`}>X position</label>
+                      <PercentInput
+                        id={`x-${field.key}`}
+                        value={field.x}
+                        fallback={50}
+                        onCommit={(next) => updatePlacement(field.key, { x: next })}
+                        onFocusField={() => setSelectedPlacementKey(field.key)}
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor={`y-${field.key}`}>Y position</label>
+                      <PercentInput
+                        id={`y-${field.key}`}
+                        value={field.y}
+                        fallback={48}
+                        onCommit={(next) => updatePlacement(field.key, { y: next })}
+                        onFocusField={() => setSelectedPlacementKey(field.key)}
                       />
                     </div>
                     <div className="field">
@@ -2630,14 +2812,17 @@ export function ActivityEditorClient({ slug }: Props) {
                         onChange={(e) =>
                           updatePlacement(field.key, { font_size: Number(e.target.value) || 16 })
                         }
+                        onFocus={() => setSelectedPlacementKey(field.key)}
                       />
                     </div>
                     <div className="field">
-                      <label>Width</label>
-                      <input
-                        value={String(field.width ?? "70%")}
-                        placeholder="70%"
-                        onChange={(e) => updatePlacement(field.key, { width: e.target.value })}
+                      <label htmlFor={`width-${field.key}`}>Width</label>
+                      <PercentInput
+                        id={`width-${field.key}`}
+                        value={field.width}
+                        fallback={70}
+                        onCommit={(next) => updatePlacement(field.key, { width: next })}
+                        onFocusField={() => setSelectedPlacementKey(field.key)}
                       />
                     </div>
                     <div className="field" style={{ gridColumn: "1 / -1" }}>
@@ -2772,30 +2957,52 @@ export function ActivityEditorClient({ slug }: Props) {
               </div>
 
               <div className="placement-preview">
-                <div className="form-grid two" style={{ width: "100%", maxWidth: 420 }}>
-                  <div className="field">
-                    <label htmlFor="previewTemplate">Editing design</label>
-                    <AdminSelect
-                      id="previewTemplate"
-                      value={activeDesignKey || designKeys[0] || ""}
-                      options={designOptions}
-                      onChange={setPreviewTemplateKey}
-                    />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="previewName">Sample name</label>
-                    <input
-                      id="previewName"
-                      value={previewName}
-                      onChange={(e) => setPreviewName(e.target.value)}
-                    />
+                <div className="field" style={{ width: "100%", maxWidth: 420 }}>
+                  <label htmlFor="previewTemplate">Editing design</label>
+                  <AdminSelect
+                    id="previewTemplate"
+                    value={activeDesignKey || designKeys[0] || ""}
+                    options={designOptions}
+                    onChange={setPreviewTemplateKey}
+                  />
+                </div>
+                <div className="field" style={{ width: "100%", maxWidth: 420 }}>
+                  <span className="field-label" id="guides-label">
+                    Guides
+                  </span>
+                  <div
+                    className="segmented"
+                    role="radiogroup"
+                    aria-labelledby="guides-label"
+                  >
+                    {(
+                      [
+                        ["bubble", "Bubble"],
+                        ["box", "Box"],
+                        ["clean", "Clean"]
+                      ] as Array<[PlacementGuideMode, string]>
+                    ).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={guideMode === value}
+                        className={`segmented-btn${guideMode === value ? " is-active" : ""}`}
+                        onClick={() => setGuideModePersist(value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
                 </div>
                 <p className="meta" style={{ margin: 0, width: "100%", maxWidth: 420 }}>
                   Placement is per design. Switch the design above to edit that artwork&rsquo;s positions,
-                  fonts, and colors.
+                  fonts, and colors. Edit sample text for each field in the left panels.
                 </p>
-                <div className="placement-stage" ref={stageRef}>
+                <div
+                  className={`placement-stage${selectedPlacementKey ? " has-selection" : ""}`}
+                  ref={stageRef}
+                >
                   {previewUrl ? (
                     <img src={previewUrl} alt="Certificate preview" />
                   ) : (
@@ -2803,22 +3010,71 @@ export function ActivityEditorClient({ slug }: Props) {
                       Generating preview…
                     </p>
                   )}
-                  {placementFields.map(({ field }) => (
-                    <div
-                      key={field.key}
-                      className="placement-handle"
-                      style={{
-                        left: toPercent(field.x ?? "50%"),
-                        top: toPercent(field.y ?? "50%")
-                      }}
-                      onPointerDown={(e) => onHandlePointerDown(field.key, e)}
-                      onPointerMove={(e) => onHandlePointerMove(field.key, e)}
-                      onPointerUp={onHandlePointerUp}
-                      title={field.label || field.key}
-                    />
-                  ))}
+                  {guideMode !== "clean"
+                    ? placementFields.map(({ field }) => {
+                        const isActive = selectedPlacementKey === field.key;
+                        const xPct = parsePercentNumber(field.x ?? "50%");
+                        const yPct = parsePercentNumber(field.y ?? "50%");
+                        const widthPct = parsePercentNumber(field.width ?? "70%", 70);
+                        const fontSize = field.font_size ?? 24;
+                        // Match canvas: font scales vs BASE_WIDTH 794; stage shows the full image width.
+                        const scale = stageSize.w / 794;
+                        const displayFont = Math.max(8, fontSize * scale);
+                        const lineHeight = displayFont + 5 * scale;
+                        // Canvas uses alphabetic baseline — glyphs sit mostly above stored y.
+                        const ascent = displayFont * 0.82;
+                        const sample =
+                          previewSamples[field.key] ?? defaultSampleForField(field);
+                        const boxWidthPx = Math.max(1, (widthPct / 100) * stageSize.w);
+                        const avgChar = Math.max(1, displayFont * 0.52);
+                        const approxLines = Math.max(
+                          1,
+                          Math.min(8, Math.ceil((sample.trim().length * avgChar) / boxWidthPx))
+                        );
+                        const boxHeight = ascent + (approxLines - 1) * lineHeight + displayFont * 0.22;
+                        return (
+                          <div
+                            key={field.key}
+                            className={`placement-guide${isActive ? " is-active" : " is-dimmed"}`}
+                          >
+                            {guideMode === "box" ? (
+                              <div
+                                className="placement-box"
+                                style={{
+                                  left: `${xPct}%`,
+                                  top: `calc(${yPct}% - ${ascent.toFixed(1)}px)`,
+                                  width: `${widthPct}%`,
+                                  height: `${Math.max(18, boxHeight).toFixed(1)}px`
+                                }}
+                                onPointerDown={() => setSelectedPlacementKey(field.key)}
+                                title={`${field.label || field.key} · ${widthPct.toFixed(1)}% wide`}
+                              >
+                                <div
+                                  className="placement-resize"
+                                  onPointerDown={(e) => onResizePointerDown(field.key, e)}
+                                  onPointerMove={(e) => onResizePointerMove(field.key, e)}
+                                  onPointerUp={onResizePointerUp}
+                                  title="Drag to resize width"
+                                />
+                              </div>
+                            ) : null}
+                            <div
+                              className="placement-handle"
+                              style={{
+                                left: `${xPct}%`,
+                                top: `${yPct}%`
+                              }}
+                              onPointerDown={(e) => onHandlePointerDown(field.key, e)}
+                              onPointerMove={(e) => onHandlePointerMove(field.key, e)}
+                              onPointerUp={onHandlePointerUp}
+                              title={field.label || field.key}
+                            />
+                          </div>
+                        );
+                      })
+                    : null}
                 </div>
-                <p className="meta">Drag a marker to reposition that field on this design.</p>
+                <p className="meta">{guideModeHint(guideMode)}</p>
               </div>
             </div>
           )}
@@ -2906,23 +3162,78 @@ export function ActivityEditorClient({ slug }: Props) {
   );
 }
 
+function PercentInput({
+  id,
+  value,
+  fallback,
+  onCommit,
+  onFocusField
+}: {
+  id: string;
+  value: string | number | undefined;
+  fallback: number;
+  onCommit: (percent: string) => void;
+  onFocusField?: () => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const unitId = `${id}-unit`;
+  return (
+    <div className="percent-field">
+      <input
+        id={id}
+        inputMode="decimal"
+        value={draft ?? formatPercentInput(value, fallback)}
+        placeholder={String(fallback)}
+        aria-describedby={unitId}
+        onFocus={() => {
+          setDraft(formatPercentInput(value, fallback));
+          onFocusField?.();
+        }}
+        onChange={(e) => {
+          const raw = e.target.value.replace(/%/g, "");
+          if (raw !== "" && !/^-?\d*\.?\d*$/.test(raw)) return;
+          setDraft(raw);
+          const next = percentFromInput(raw);
+          if (next) onCommit(next);
+        }}
+        onBlur={() => {
+          const next = percentFromInput(draft ?? formatPercentInput(value, fallback));
+          if (next) onCommit(next);
+          setDraft(null);
+        }}
+      />
+      <span id={unitId} className="percent-field-suffix">
+        %
+      </span>
+    </div>
+  );
+}
+
 function PlacementFieldPanel({
   title,
   meta,
   defaultOpen = false,
+  active = false,
+  onOpenChange,
   children
 }: {
   title: string;
   meta: string;
   defaultOpen?: boolean;
+  active?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <details
-      className="card admin-panel admin-collapse"
+      className={`card admin-panel admin-collapse${active ? " is-placement-active" : ""}`}
       open={open}
-      onToggle={(e) => setOpen(e.currentTarget.open)}
+      onToggle={(e) => {
+        const next = e.currentTarget.open;
+        setOpen(next);
+        onOpenChange?.(next);
+      }}
     >
       <summary>
         <div>

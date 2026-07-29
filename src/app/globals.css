@@ -1019,6 +1019,42 @@ textarea {
   gap: 0.65rem;
 }
 
+.percent-field {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: #fff;
+  overflow: hidden;
+}
+
+.percent-field:focus-within {
+  border-color: rgba(217, 27, 92, 0.55);
+  box-shadow: 0 0 0 3px rgba(217, 27, 92, 0.12);
+}
+
+.percent-field input {
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+}
+
+.percent-field-suffix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.7rem;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.88rem;
+  background: var(--blush-2);
+  border-left: 1px solid var(--line);
+  user-select: none;
+}
+
 .color-swatch {
   width: 2.6rem;
   height: 2.6rem;
@@ -2026,6 +2062,27 @@ textarea {
   height: auto;
 }
 
+.placement-guide {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.placement-guide.is-dimmed {
+  opacity: 0.38;
+}
+
+.placement-guide.is-active {
+  opacity: 1;
+  z-index: 3;
+}
+
+.placement-stage.has-selection .placement-guide.is-dimmed .placement-handle,
+.placement-stage.has-selection .placement-guide.is-dimmed .placement-box {
+  filter: grayscale(0.2);
+}
+
 .placement-handle {
   position: absolute;
   width: 16px;
@@ -2037,12 +2094,67 @@ textarea {
   transform: translate(-50%, -50%);
   cursor: grab;
   touch-action: none;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.placement-guide.is-active .placement-handle {
+  width: 18px;
+  height: 18px;
+  box-shadow: 0 0 0 3px rgba(217, 27, 92, 0.28), 0 2px 8px rgba(42, 34, 37, 0.35);
 }
 
 .placement-handle:hover,
 .placement-handle:active {
   background: var(--cranberry-deep);
   cursor: grabbing;
+}
+
+.placement-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px dashed rgba(217, 27, 92, 0.85);
+  background: rgba(217, 27, 92, 0.06);
+  border-radius: 2px;
+  pointer-events: auto;
+  cursor: default;
+  min-height: 18px;
+}
+
+.placement-guide.is-active .placement-box {
+  border-color: var(--cranberry);
+  background: rgba(217, 27, 92, 0.1);
+  box-shadow: 0 0 0 1px rgba(217, 27, 92, 0.15);
+}
+
+.placement-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: ew-resize;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+.placement-resize::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  width: 6px;
+  height: min(18px, 100%);
+  transform: translateY(-50%);
+  border-radius: 3px;
+  background: var(--cranberry);
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 4px rgba(42, 34, 37, 0.3);
+}
+
+.admin-collapse.is-placement-active {
+  border-color: rgba(217, 27, 92, 0.45);
+  box-shadow: 0 0 0 1px rgba(217, 27, 92, 0.18);
 }
 
 @media (max-width: 900px) {

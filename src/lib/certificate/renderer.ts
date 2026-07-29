@@ -7,8 +7,14 @@ function calculateDynamicPosition(value: string | number, canvasDimension: numbe
   if (typeof value === "number") {
     return value * (canvasDimension / BASE_WIDTH);
   }
-  if (typeof value === "string" && value.includes("%")) {
-    return canvasDimension * (parseFloat(value) / 100);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return 0;
+    // Percent strings ("45%") and bare numeric strings ("45") both mean percent of canvas.
+    if (trimmed.includes("%") || /^-?\d+(\.\d+)?$/.test(trimmed)) {
+      const n = parseFloat(trimmed);
+      if (Number.isFinite(n)) return canvasDimension * (n / 100);
+    }
   }
   return 0;
 }
@@ -153,6 +159,8 @@ export async function renderCertificateCanvas(input: {
     );
     ctx.font = canvasFontString(fontSize, family, bold, italic);
     ctx.fillStyle = field.color || "#000000";
+    // Alphabetic baseline: stored y is the text baseline (glyphs sit mostly above it).
+    ctx.textBaseline = "alphabetic";
     drawWrappedText(ctx, value, x, y, maxWidth, fontSize, field.text_align || "left");
   }
 
