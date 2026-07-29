@@ -345,6 +345,7 @@ textarea {
   color: var(--muted);
   line-height: 1.45;
   flex: 1;
+  white-space: pre-line;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -405,6 +406,7 @@ textarea {
   color: var(--muted);
   font-size: 0.95rem;
   line-height: 1.5;
+  white-space: pre-line;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -584,6 +586,7 @@ textarea {
   font-size: 0.95rem;
   line-height: 1.4;
   max-width: 36rem;
+  white-space: pre-line;
 }
 
 .lookup-title,
