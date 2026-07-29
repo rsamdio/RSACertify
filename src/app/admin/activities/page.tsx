@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { deleteDoc, doc, collection, getDocs, writeBatch } from "firebase/firestore";
-import { get, ref } from "firebase/database";
 import { getFirebaseServices } from "@/lib/firebase-client";
 import { syncAdminClaims } from "@/lib/callables";
+import { fetchAuthedRtdbJson } from "@/lib/rtdb-rest";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 
 type CatalogRow = {
@@ -62,14 +62,18 @@ function ActivitiesList() {
     setLoading(true);
     setError("");
     try {
-      await syncAdminClaims().catch(() => undefined);
-      const { auth, rtdb } = getFirebaseServices();
+      await Promise.race([
+        syncAdminClaims().catch(() => undefined),
+        new Promise((resolve) => setTimeout(resolve, 8000))
+      ]);
+      const { auth } = getFirebaseServices();
       const user = auth.currentUser;
       if (!user) {
         setError("Sign-in session not ready. Please refresh.");
         return;
       }
       const token = await user.getIdTokenResult(true);
+      const idToken = await user.getIdToken();
       const role = String(token?.claims.role || "");
       const managed = (token?.claims.managed_activities || {}) as Record<string, boolean>;
       setCanCreate(role === "super" || role === "platform");
@@ -77,16 +81,18 @@ function ActivitiesList() {
 
       let list: CatalogRow[] = [];
       if (role === "super" || role === "platform") {
-        const snap = await get(ref(rtdb, "activities/catalog"));
-        const value = (snap.val() as Record<string, CatalogRow> | null) ?? {};
+        const value =
+          (await fetchAuthedRtdbJson<Record<string, CatalogRow> | null>(
+            "activities/catalog",
+            idToken
+          )) ?? {};
         list = Object.values(value);
       } else if (Object.keys(managed).some((slug) => managed[slug])) {
         const slugs = Object.keys(managed).filter((slug) => managed[slug]);
         const fetched = await Promise.all(
-          slugs.map(async (slug) => {
-            const snap = await get(ref(rtdb, `activities/catalog/${slug}`));
-            return snap.val() as CatalogRow | null;
-          })
+          slugs.map(async (slug) =>
+            fetchAuthedRtdbJson<CatalogRow | null>(`activities/catalog/${slug}`, idToken)
+          )
         );
         list = fetched.filter(Boolean) as CatalogRow[];
       } else {
