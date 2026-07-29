@@ -29,8 +29,12 @@ export function getAdmin(): Admin {
     return _admin!;
 }
 
-/** Firestore FieldValue (increment, serverTimestamp) for use in writes. */
-export function getFieldValue(): { increment(n: number): unknown; serverTimestamp(): unknown } {
+/** Firestore FieldValue (increment, serverTimestamp, delete) for use in writes. */
+export function getFieldValue(): {
+    increment(n: number): unknown;
+    serverTimestamp(): unknown;
+    delete(): unknown;
+} {
     ensureAdmin();
     // FieldValue is a static property on the firestore namespace
     // Access it directly from the admin module, not from an instance

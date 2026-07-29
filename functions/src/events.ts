@@ -1,4 +1,5 @@
 import * as functions from 'firebase-functions/v1';
+import { fn } from './runtime';
 import { getAdmin, getFieldValue } from './admin';
 import { statisticsCache, eventConfigCache, getStatisticsCacheKey, getEventConfigCacheKey } from './cache';
 import { withMonitoring } from './monitoring';
@@ -7,10 +8,10 @@ import { verifyAdmin } from './auth';
 /**
  * Get event statistics with caching (uses event doc counters, no participants collection read)
  */
-export const getEventStatistics = functions.https.onCall(
+export const getEventStatistics = fn.https.onCall(
     withMonitoring(async (data, context) => {
     await verifyAdmin(context);
-    const { eventId } = data;
+    const { activitySlug: eventId } = data;
     
     if (!eventId) {
         throw new functions.https.HttpsError(
@@ -28,7 +29,7 @@ export const getEventStatistics = functions.https.onCall(
     
     try {
         const eventDoc = await getAdmin().firestore()
-            .doc(`events/${eventId}`)
+            .doc(`activities/${eventId}`)
             .get();
         
         if (!eventDoc.exists) {
@@ -73,10 +74,10 @@ export const getEventStatistics = functions.https.onCall(
 /**
  * Get event configuration with caching
  */
-export const getEventConfig = functions.https.onCall(
+export const getEventConfig = fn.https.onCall(
     withMonitoring(async (data, context) => {
     await verifyAdmin(context);
-    const { eventId } = data;
+    const { activitySlug: eventId } = data;
     
     if (!eventId) {
         throw new functions.https.HttpsError(
@@ -95,7 +96,7 @@ export const getEventConfig = functions.https.onCall(
     try {
         // Fetch from Firestore
         const eventDoc = await getAdmin().firestore()
-            .doc(`events/${eventId}`)
+            .doc(`activities/${eventId}`)
             .get();
         
         if (!eventDoc.exists) {
@@ -131,18 +132,18 @@ export const getEventConfig = functions.https.onCall(
  * Supports single event reconciliation (eventId provided) or all events (no eventId)
  * Can be called from admin dashboard to fix counter discrepancies
  */
-export const migrateCounters = functions.https.onCall(
+export const migrateCounters = fn.https.onCall(
     withMonitoring(async (data, context) => {
         await verifyAdmin(context);
         try {
             const db = getAdmin().firestore();
-            const { eventId } = data || {};
+            const { activitySlug: eventId } = data || {};
             
             let eventsToProcess: Array<FirebaseFirestore.DocumentSnapshot<FirebaseFirestore.DocumentData> | FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>> = [];
             
             if (eventId) {
                 // Single event reconciliation
-                const eventDoc = await db.collection('events').doc(eventId).get();
+                const eventDoc = await db.collection('activities').doc(eventId).get();
                 if (!eventDoc.exists) {
                     throw new functions.https.HttpsError(
                         'not-found',
@@ -152,7 +153,7 @@ export const migrateCounters = functions.https.onCall(
                 eventsToProcess = [eventDoc];
             } else {
                 // All events reconciliation
-                const eventsSnapshot = await db.collection('events').get();
+                const eventsSnapshot = await db.collection('activities').get();
                 eventsToProcess = eventsSnapshot.docs;
             }
             
@@ -178,7 +179,7 @@ export const migrateCounters = functions.https.onCall(
                     
                     // Get all participants for this event
                     const participantsSnapshot = await db
-                        .collection('events')
+                        .collection('activities')
                         .doc(currentEventId)
                         .collection('participants')
                         .get();
@@ -201,7 +202,7 @@ export const migrateCounters = functions.https.onCall(
                     
                     if (needsReconciliation) {
                         // Update event document with correct counts
-                        await db.collection('events').doc(currentEventId).update({
+                        await db.collection('activities').doc(currentEventId).update({
                             participantsCount: totalParticipants,
                             certificatesCount: downloadedCount,
                             updatedAt: getFieldValue().serverTimestamp()

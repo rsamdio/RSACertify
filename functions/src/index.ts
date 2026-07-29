@@ -1,4 +1,4 @@
-import * as functions from 'firebase-functions/v1';
+import { fn } from './runtime';
 import { getAdmin, getFieldValue, ensureAdmin } from './admin';
 
 // ===== COUNTER FUNCTIONS =====
@@ -54,12 +54,12 @@ function validateCounter(newValue: number, fieldName: string): void {
  * Increment participantsCount when a participant is created
  * Includes retry logic and validation
  */
-export const onParticipantCreate = functions.firestore
-    .document('events/{eventId}/participants/{participantId}')
+export const onParticipantCreate = fn.firestore
+    .document('activities/{eventId}/participants/{participantId}')
     .onCreate(async (snap, context) => {
         ensureAdmin();
         const eventId = context.params.eventId;
-        const eventRef = getAdmin().firestore().doc(`events/${eventId}`);
+        const eventRef = getAdmin().firestore().doc(`activities/${eventId}`);
         
         try {
             // First, check if event exists
@@ -93,12 +93,12 @@ export const onParticipantCreate = functions.firestore
  * Decrement participantsCount when a participant is deleted
  * Includes retry logic and validation
  */
-export const onParticipantDelete = functions.firestore
-    .document('events/{eventId}/participants/{participantId}')
+export const onParticipantDelete = fn.firestore
+    .document('activities/{eventId}/participants/{participantId}')
     .onDelete(async (snap, context) => {
         ensureAdmin();
         const eventId = context.params.eventId;
-        const eventRef = getAdmin().firestore().doc(`events/${eventId}`);
+        const eventRef = getAdmin().firestore().doc(`activities/${eventId}`);
         
         try {
             // First, check if event exists
@@ -108,7 +108,17 @@ export const onParticipantDelete = functions.firestore
                 return; // Don't throw - event might have been deleted
             }
             
-            const currentCount = eventDoc.data()?.participantsCount || 0;
+            const currentCount = Number(eventDoc.data()?.participantsCount || 0);
+            if (currentCount <= 0) {
+                if (currentCount < 0) {
+                    await eventRef.update({
+                        participantsCount: 0,
+                        updatedAt: getFieldValue().serverTimestamp()
+                    });
+                }
+                return;
+            }
+
             const newCount = currentCount - 1;
             validateCounter(newCount, 'participantsCount');
             
@@ -133,14 +143,14 @@ export const onParticipantDelete = functions.firestore
  * Decrement if status changes from 'downloaded' to something else
  * Includes retry logic and validation
  */
-export const onCertificateDownload = functions.firestore
-    .document('events/{eventId}/participants/{participantId}')
+export const onCertificateDownload = fn.firestore
+    .document('activities/{eventId}/participants/{participantId}')
     .onUpdate(async (change, context) => {
         ensureAdmin();
         const before = change.before.data();
         const after = change.after.data();
         const eventId = context.params.eventId;
-        const eventRef = getAdmin().firestore().doc(`events/${eventId}`);
+        const eventRef = getAdmin().firestore().doc(`activities/${eventId}`);
         
         const beforeStatus = before.certificateStatus || 'pending';
         const afterStatus = after.certificateStatus || 'pending';
@@ -200,8 +210,8 @@ export const onCertificateDownload = functions.firestore
  * This is the single source of truth for counters in RTDB (events/{eventId}/counters)
  * Note: events/list is updated separately by syncEventsListToRealtime
  */
-export const syncCountersToRealtime = functions.firestore
-    .document('events/{eventId}')
+export const syncCountersToRealtime = fn.firestore
+    .document('activities/{eventId}')
     .onWrite(async (change, context) => {
         ensureAdmin();
         const eventId = context.params.eventId;
@@ -218,7 +228,7 @@ export const syncCountersToRealtime = functions.firestore
         
         try {
             // Update Realtime Database counters (single source of truth for live updates)
-            const countersRef = getAdmin().database().ref(`events/${eventId}/counters`);
+            const countersRef = getAdmin().database().ref(`activities/${eventId}/counters`);
             await countersRef.set({
                 participants: data.participantsCount || 0,
                 certificates: data.certificatesCount || 0,
@@ -232,7 +242,7 @@ export const syncCountersToRealtime = functions.firestore
 
 // Export functions from other modules
 export * from './participants';
-export * from './exports';
 export * from './events';
-export * from './realtime-sync';
+export * from './read-model-sync';
+export * from './claims';
 
