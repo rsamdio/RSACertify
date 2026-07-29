@@ -36,7 +36,7 @@ The public organizer guide is at `/playbook`. The footer’s Explore section doe
 - `verifyCertificate` accepts active activities only, has a durable Firestore rate limit, and enforces Firebase App Check.
 - Initialize App Check locally and in Netlify with `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`. It is a public reCAPTCHA v3 site key, not a secret.
 - `/api/sheet-csv` and `/api/sheet-sheets` only proxy public Google Sheets. There is no Netlify service account; CSV upload is the alternative.
-- `src/middleware.ts` creates a nonce per request for CSP. `unsafe-eval` is development-only, `frame-src` permits `*.firebaseapp.com`, and COOP is `same-origin-allow-popups` for Firebase Google popup sign-in.
+- `src/middleware.ts` sets CSP with host allowlists (no per-request script nonces — those break ISR/cached HTML on Netlify). Development adds `unsafe-eval` for HMR. `frame-src` permits `*.firebaseapp.com`; COOP is `same-origin-allow-popups` for Firebase Google popup sign-in.
 - Do not duplicate the dynamic CSP in `netlify.toml`.
 
 ## Key files

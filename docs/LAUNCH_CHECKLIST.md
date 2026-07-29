@@ -16,7 +16,7 @@
 - [ ] Register the Firebase web app with App Check and keep enforcement enabled for `verifyCertificate`.
 - [ ] Deploy Firebase Functions, Firestore rules, RTDB rules, and Storage rules to project `rsacertify`.
 - [ ] Confirm Functions are deployed only to `asia-southeast1`; the client also calls that region.
-- [ ] Confirm `src/middleware.ts` remains the CSP authority: nonce-based scripts, development-only `unsafe-eval`, Firebase popup frames, and `same-origin-allow-popups` COOP.
+- [ ] Confirm `src/middleware.ts` remains the CSP authority: host allowlists + `'unsafe-inline'` (no script nonces — incompatible with ISR), development-only `unsafe-eval`, Firebase popup frames, and `same-origin-allow-popups` COOP.
 - [ ] Confirm no CSP is statically duplicated in `netlify.toml`.
 - [ ] Privacy Policy and Terms (last updated **29 July 2026**) match the live product; RSAMDIO board / licensed counsel confirmation complete for India venue, DPDP roles, and cookie/consent needs if required.
 

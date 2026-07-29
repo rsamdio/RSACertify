@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Per-request CSP with script nonces (Next.js App Router pattern).
- * Drops script-src 'unsafe-inline' in favor of nonce + strict-dynamic.
- * style-src keeps 'unsafe-inline' for Next/CSS runtime compatibility.
+ * Production-safe CSP for Next.js on Netlify.
+ *
+ * Per-request script nonces + 'strict-dynamic' break ISR/static HTML (cached
+ * markup cannot match a fresh nonce) and block Next/Firebase inline loaders.
+ * Host allowlists + 'unsafe-inline' keep App Check, Auth, Analytics, and App
+ * Router hydration working. 'unsafe-eval' stays development-only for HMR.
  */
-export function middleware(request: NextRequest) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  // Next.js React Refresh / webpack HMR evaluate strings in development only.
+export function middleware(_request: NextRequest) {
   const scriptSrcEval =
     process.env.NODE_ENV === "development" ? "'unsafe-eval'" : null;
 
@@ -16,16 +17,17 @@ export function middleware(request: NextRequest) {
     "base-uri 'self'",
     "object-src 'none'",
     "form-action 'self'",
-    // Nonce + strict-dynamic; host allowlist remains for older browsers / App Check / GA loaders
     [
       "script-src 'self'",
-      `'nonce-${nonce}'`,
-      "'strict-dynamic'",
+      "'unsafe-inline'",
       scriptSrcEval,
       "https://www.googletagmanager.com",
       "https://www.gstatic.com",
       "https://www.google.com",
-      "https://www.recaptcha.net"
+      "https://www.recaptcha.net",
+      "https://apis.google.com",
+      "https://*.googleapis.com",
+      "https://*.firebaseapp.com"
     ]
       .filter(Boolean)
       .join(" "),
@@ -45,10 +47,11 @@ export function middleware(request: NextRequest) {
       "https://*.r2.dev",
       "https://cert.rsamdio.org",
       "https://www.google-analytics.com",
+      "https://*.google-analytics.com",
+      "https://*.analytics.google.com",
       "https://www.google.com",
       "https://www.recaptcha.net"
     ].join(" "),
-    // Firebase Auth popup + Google / reCAPTCHA iframes
     [
       "frame-src 'self'",
       "https://*.firebaseapp.com",
@@ -65,26 +68,18 @@ export function middleware(request: NextRequest) {
     .join("; ")
     .replace(/\s{2,}/g, " ");
 
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
-
-  const response = NextResponse.next({
-    request: { headers: requestHeaders }
-  });
+  const response = NextResponse.next();
   response.headers.set("Content-Security-Policy", csp);
   // same-origin breaks Firebase signInWithPopup (window.closed / opener access).
   response.headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-  response.headers.set("x-nonce", nonce);
   return response;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Apply to all routes except static assets and Next internals.
-     */
     {
-      source: "/((?!_next/static|_next/image|favicon.webp|assets/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+      source:
+        "/((?!_next/static|_next/image|favicon.webp|assets/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" }
