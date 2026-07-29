@@ -57,6 +57,7 @@ export type Activity = {
     keywords?: string;
     author?: string;
     ogType?: string;
+    /** @deprecated Sitewide OG image only — not editable / not used for previews. */
     ogImage?: string;
     schemaType?: string;
     robots?: string;

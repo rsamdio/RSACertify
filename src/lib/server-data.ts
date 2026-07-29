@@ -48,7 +48,7 @@ export async function getCatalogActivities(): Promise<CatalogRecord[]> {
         description: item.description || "",
         date: item.date || undefined,
         status: item.status === "closed" ? ("closed" as const) : ("active" as const),
-        ogImage: item.ogImage || item.seo?.ogImage,
+        ogImage: undefined,
         updatedAt: typeof item.updatedAt === "number" ? item.updatedAt : undefined,
         seo: item.seo
       }))
@@ -73,12 +73,14 @@ export async function getActivityBySlug(slug: string): Promise<Activity | null> 
     const participantFields = Array.isArray(raw.participantFields)
       ? (raw.participantFields as ParticipantField[])
       : [];
-    const seo =
-      raw.seo && typeof raw.seo === "object"
-        ? (raw.seo as Activity["seo"])
-        : raw.ogImage
-          ? { ogImage: String(raw.ogImage) }
-          : undefined;
+    const seoRaw =
+      raw.seo && typeof raw.seo === "object" ? (raw.seo as Record<string, unknown>) : undefined;
+    const seo = seoRaw
+      ? (() => {
+          const { ogImage: _ignored, ...rest } = seoRaw;
+          return Object.keys(rest).length ? (rest as Activity["seo"]) : undefined;
+        })()
+      : undefined;
 
     return {
       slug: String(raw.slug || slug),

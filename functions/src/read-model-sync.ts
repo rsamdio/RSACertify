@@ -121,9 +121,13 @@ export const syncActivityCatalogToRtdb = fn.firestore
       description: String(data.description || ''),
       date: data.date ? String(data.date) : null,
       status,
-      ogImage: String(data?.seo?.ogImage || ''),
+      ogImage: '',
       updatedAt,
-      seo: (data.seo && typeof data.seo === 'object' ? data.seo : {}) as Record<string, unknown>
+      seo: (data.seo && typeof data.seo === 'object'
+        ? Object.fromEntries(
+            Object.entries(data.seo as Record<string, unknown>).filter(([key]) => key !== 'ogImage')
+          )
+        : {}) as Record<string, unknown>
     };
 
     const publicActivityPayload: PublicActivityPayload = {

@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     activity.description ||
     `Download your verified certificate for ${activity.title} from Rotaract Certify.`;
-  const ogImage = activity.seo?.ogImage || "/assets/images/rotaractcertifyogimg.webp";
+  const ogImage = "/assets/images/rotaractcertifyogimg.webp";
   const url = `https://certify.rsamdio.org/${activity.slug}/`;
   return {
     title,

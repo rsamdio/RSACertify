@@ -25,11 +25,11 @@ import {
   updateDoc,
   writeBatch
 } from "firebase/firestore";
-import { onValue, ref } from "firebase/database";
 import type { Activity, ActivityStatus, FieldPlacement, Participant, ParticipantField } from "@/types/domain";
 import { renderCertificateCanvas } from "@/lib/certificate/renderer";
 import { CERTIFICATE_FONTS, normalizeHexColor } from "@/lib/certificate-fonts";
 import { slugify } from "@/lib/activity-defaults";
+import { fetchAuthedRtdbJson } from "@/lib/rtdb-rest";
 import {
   addFieldPlacementToAllDesigns,
   hydrateActivityPlacements,
@@ -296,17 +296,42 @@ export function ActivityEditorClient({ slug }: Props) {
     return () => mq.removeEventListener("change", sync);
   }, [tab]);
 
+  async function reloadParticipants() {
+    const { auth } = getFirebaseServices();
+    const user = auth.currentUser;
+    if (!user) {
+      setParticipants([]);
+      return;
+    }
+    const idToken = await user.getIdToken();
+    const value =
+      (await fetchAuthedRtdbJson<Record<string, ParticipantRow> | null>(
+        `activities/${slug}/participants/index`,
+        idToken
+      )) ?? {};
+    const rows = Object.entries(value).map(([id, row]) => ({ ...row, id }));
+    rows.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    setParticipants(rows);
+  }
+
   useEffect(() => {
     if (tab !== "participants") return;
-    const { rtdb } = getFirebaseServices();
-    const indexRef = ref(rtdb, `activities/${slug}/participants/index`);
-    const unsub = onValue(indexRef, (snap) => {
-      const value = (snap.val() as Record<string, ParticipantRow> | null) ?? {};
-      const rows = Object.entries(value).map(([id, row]) => ({ ...row, id }));
-      rows.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
-      setParticipants(rows);
-    });
-    return () => unsub();
+    let cancelled = false;
+    (async () => {
+      try {
+        await reloadParticipants();
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) {
+          setError("Unable to load people. Please switch tabs and try again.");
+          setParticipants([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when entering People for this slug
   }, [slug, tab]);
 
   useEffect(() => {
@@ -525,7 +550,12 @@ export function ActivityEditorClient({ slug }: Props) {
     if (!activity) return;
     const publishing = activity.status === "active";
     // Slug renames are intentional and go through requestSlugUpdate — never via Save details.
-    const ok = await saveActivity({ ...activity, slug }, "Details saved.");
+    // Sitewide OG image only — do not persist per-activity share image URLs.
+    const { ogImage: _dropOg, ...seoRest } = activity.seo || {};
+    const ok = await saveActivity(
+      { ...activity, slug, seo: Object.keys(seoRest).length ? seoRest : undefined },
+      "Details saved."
+    );
     if (ok && publishing) {
       setShareOpen(true);
     }
@@ -1192,7 +1222,8 @@ export function ActivityEditorClient({ slug }: Props) {
         processed += Number(result.processed || chunk.length);
         skipped += Number(result.skipped || 0);
       }
-      // People list refreshes via the existing RTDB index listener — no Firestore re-read.
+      // Refresh people via HTTPS REST (same path as tab open) — no RTDB WebSocket listener.
+      await reloadParticipants().catch(console.error);
       flashOk(
         `Imported ${processed} people.${skipped ? ` ${skipped} already existed and were skipped.` : ""}`
       );
@@ -1649,23 +1680,6 @@ export function ActivityEditorClient({ slug }: Props) {
                   ))}
                 </div>
               </div>
-            </div>
-            <div className="field">
-              <label htmlFor="seo-og">Share image URL (optional)</label>
-              <input
-                id="seo-og"
-                value={activity.seo?.ogImage || ""}
-                onChange={(e) =>
-                  setActivity({
-                    ...activity,
-                    seo: { ...(activity.seo || {}), ogImage: e.target.value.trim() }
-                  })
-                }
-                placeholder="https://…/image.webp"
-              />
-              <p className="meta" style={{ margin: "0.35rem 0 0" }}>
-                Used for social previews. Defaults to the Rotaract Certify OG image when empty.
-              </p>
             </div>
             <div className="field">
               <label htmlFor="seo-keywords">SEO keywords (optional)</label>
