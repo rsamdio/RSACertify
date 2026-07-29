@@ -157,7 +157,7 @@ export const syncInvitesToRealtime = functions.firestore
 
 /**
  * Sync participant metadata index to Realtime Database
- * Maintains index: name, email, certificateStatus, updatedAt, additionalFields
+ * Maintains index: name, lookup, certificateStatus, updatedAt, additionalFields
  * Includes additionalFields to avoid Firestore reads for custom fields display
  */
 export const syncParticipantIndexToRealtime = functions.firestore
@@ -187,7 +187,7 @@ export const syncParticipantIndexToRealtime = functions.firestore
                 // Sync index data including additionalFields for custom fields
                 const indexData: any = {
                     name: participantData.name || '',
-                    email: participantData.email || '',
+                    lookup: participantData.lookup || '',
                     certificateStatus: participantData.certificateStatus || 'pending',
                     updatedAt: participantData.updatedAt?.toMillis() || Date.now()
                 };
@@ -208,7 +208,7 @@ export const syncParticipantIndexToRealtime = functions.firestore
 
 /**
  * Sync participant search index to Realtime Database
- * Maintains searchable text: name + email + additionalFields
+ * Maintains searchable text: name + lookup + additionalFields
  */
 export const syncParticipantSearchIndex = functions.firestore
     .document('events/{eventId}/participants/{participantId}')
@@ -237,7 +237,7 @@ export const syncParticipantSearchIndex = functions.firestore
                 // Build searchable text
                 const searchParts: string[] = [];
                 if (participantData.name) searchParts.push(participantData.name.toLowerCase());
-                if (participantData.email) searchParts.push(participantData.email.toLowerCase());
+                if (participantData.lookup) searchParts.push(String(participantData.lookup).toLowerCase());
                 
                 // Add additional fields to search text
                 if (participantData.additionalFields) {
@@ -250,11 +250,11 @@ export const syncParticipantSearchIndex = functions.firestore
                 
                 const searchText = searchParts.join(' ');
                 
-                // Sync search index (include email for exact matching)
+                // Sync search index (include lookup for exact matching)
                 const searchData = {
                     searchText,
                     participantId,
-                    email: participantData.email ? participantData.email.toLowerCase() : ''
+                    lookup: participantData.lookup ? String(participantData.lookup).toLowerCase() : ''
                 };
                 
                 await searchRef.set(searchData);

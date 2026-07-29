@@ -1,42 +1,13 @@
-[build.environment]
-RUBY_VERSION = "3.3.6"
-JEKYLL_ENV = "production"
-
 [build]
-  publish = "_site"
-  command = "bundle exec jekyll build --config _config.yml"
+  command = "npm run build"
 
-# Performance optimizations
-[[headers]]
-  for = "/assets/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-    Vary = "Accept-Encoding"
+  # Public reCAPTCHA v3 site key (safe to commit — not the secret key).
+  # Avoids setting NEXT_PUBLIC_* only in the Netlify UI for this value.
+  [build.environment]
+    NEXT_PUBLIC_RECAPTCHA_SITE_KEY = "6LdAnmotAAAAAKg8ZEFvKK1sfCL-7ZW_EWwxLkd8"
 
-[[headers]]
-  for = "/*.css"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/*.js"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/*.png"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/*.jpg"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/*.webp"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 
 [[redirects]]
   from = "https://rsacertify.netlify.app/*"
@@ -44,28 +15,25 @@ JEKYLL_ENV = "production"
   status = 301
   force = true
 
-# Security Headers
 [[headers]]
   for = "/*"
   [headers.values]
-    X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    # same-origin-allow-popups required for Firebase Google signInWithPopup
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    Cross-Origin-Resource-Policy = "same-site"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://identity.netlify.com https://static.cloudflareinsights.com https://www.googletagmanager.com https://apis.google.com https://rsacertify-default-rtdb.asia-southeast1.firebasedatabase.app https://*.asia-southeast1.firebasedatabase.app; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data: https: blob:; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.firebaseapp.com https://*.googleapis.com https://*.firebasestorage.app https://*.firebasedatabase.app https://*.asia-southeast1.firebasedatabase.app https://*.firebaseio.com wss://*.firebasedatabase.app wss://*.asia-southeast1.firebasedatabase.app wss://*.firebaseio.com https://api.netlify.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://firestore.googleapis.com https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://apis.google.com https://oauth2.googleapis.com https://*.cloudfunctions.net; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.asia-southeast1.firebasedatabase.app; frame-ancestors 'none';"
-    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    # CSP is set per-request in src/middleware.ts (script nonces). Do not duplicate here.
+    Permissions-Policy = "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
 
-# Admin area protection
 [[headers]]
   for = "/admin/*"
   [headers.values]
-    X-Content-Type-Options = "nosniff"
     Cache-Control = "no-cache, no-store, must-revalidate"
-    Pragma = "no-cache"
-    Expires = "0"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://identity.netlify.com https://static.cloudflareinsights.com https://www.googletagmanager.com https://apis.google.com https://rsacertify-default-rtdb.asia-southeast1.firebasedatabase.app https://*.asia-southeast1.firebasedatabase.app; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data: https: blob:; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.firebaseapp.com https://*.googleapis.com https://*.firebasestorage.app https://*.firebasedatabase.app https://*.asia-southeast1.firebasedatabase.app https://*.firebaseio.com wss://*.firebasedatabase.app wss://*.asia-southeast1.firebasedatabase.app wss://*.firebaseio.com https://api.netlify.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://api.github.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://firestore.googleapis.com https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://apis.google.com https://oauth2.googleapis.com https://*.cloudfunctions.net; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.asia-southeast1.firebasedatabase.app; frame-ancestors 'none';"
+    X-Robots-Tag = "noindex, nofollow"
 
-# Redirects for security
 [[redirects]]
   from = "/.env"
   to = "/404.html"

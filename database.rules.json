@@ -1,43 +1,45 @@
 {
   "rules": {
-    "events": {
-      ".read": "auth != null",
-      "list": {
-        ".read": "auth != null",
-        ".write": false
-      },
-      "$eventId": {
-        "counters": {
-          ".read": true,
+    ".read": false,
+    ".write": false,
+    "public": {
+      "catalog": {
+        ".read": true,
+        "$slug": {
           ".write": false
-        },
-        "meta": {
-          ".read": "auth != null",
+        }
+      },
+      "activities": {
+        "$slug": {
+          ".read": "data.child('status').val() === 'active' || data.child('status').val() === 'closed'",
+          ".write": false
+        }
+      }
+    },
+    "activities": {
+      "catalog": {
+        ".read": "auth != null && (auth.token.role === 'super' || auth.token.role === 'platform')",
+        "$slug": {
+          ".read": "auth != null && (auth.token.role === 'super' || auth.token.role === 'platform' || auth.token.managed_activities[$slug] === true)",
+          ".write": false
+        }
+      },
+      "$slug": {
+        "counters": {
+          ".read": "auth != null && (auth.token.role === 'super' || auth.token.role === 'platform' || auth.token.managed_activities[$slug] === true)",
           ".write": false
         },
         "participants": {
           "index": {
-            ".read": "auth != null",
+            ".read": "auth != null && (auth.token.role === 'super' || auth.token.role === 'platform' || auth.token.managed_activities[$slug] === true)",
             ".write": false
           }
-        },
-        "search": {
-          // Internal search index used by Cloud Functions only.
-          // Public clients must use a callable (e.g., verifyCertificate) instead of reading this path directly.
-          ".read": false,
-          ".write": false
         }
       }
     },
     "admins": {
       "list": {
-        ".read": "auth != null",
-        ".write": false
-      }
-    },
-    "invites": {
-      "list": {
-        ".read": "auth != null",
+        ".read": "auth != null && (auth.token.role === 'super' || auth.token.role === 'platform')",
         ".write": false
       }
     },

@@ -1,41 +1,39 @@
-.jekyll-cache
-_site
-.DS_Store
+# Dependencies / build
+node_modules/
+.next/
+out/
+tsconfig.tsbuildinfo
+
+# Firebase
+functions/node_modules/
+functions/lib/
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Env & secrets
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.development
-.env.test
-.env.production
-.well-known
+.env.*
+!.env.example
+functions/.env
+functions/.env.*
+!functions/.env.example
+secrets.md
 env.example
 
-# Local secret dumps — never commit
-secrets.md
+# Legacy Jekyll (removed — keep ignored if recreated)
+.jekyll-cache/
+_site/
+.sass-cache/
 
-# Security: Firebase config with real keys
-assets/js/firebase-config-prod.js
-
-# Security: Logs
-*.log
-logs/
-
-# Security: Temporary files
-*.tmp
-*.temp
+# OS / IDE
+.DS_Store
 Thumbs.db
-
-# Security: IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Firebase Functions
-functions/node_modules/
-functions/lib/
-firebase-debug.log
-firebase-debug.*.log
-.firebase/
+*.log
+logs/
+*.tmp
+*.temp
