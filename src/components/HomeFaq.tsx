@@ -3,7 +3,7 @@ import { JsonLd } from "@/components/JsonLd";
 const FAQS = [
   {
     q: "What is Rotaract Certify?",
-    a: "Rotaract Certify is the digital certificate platform by Rotaract South Asia MDIO (RSAMDIO). Organizers publish activities; participants look up and download verified PDF certificates."
+    a: "Rotaract Certify is the digital certificate platform by Rotaract South Asia MDIO (RSAMDIO). Organizers publish activities; recipients look up and download verified PDF certificates."
   },
   {
     q: "How do I download my certificate?",
@@ -18,7 +18,7 @@ const FAQS = [
     a: "Invited organizers, platform admins and activity managers can sign in to the admin workspace and manage the activities. Public visitors only look up their own certificates."
   },
   {
-    q: "Are participant lists public?",
+    q: "Are recipient lists public?",
     a: "No. Names, emails, and redeem codes are not listed on the public site. Lookup requires an exact match and returns only your own certificate details."
   },
   {

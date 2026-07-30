@@ -33,6 +33,8 @@
 ## Pilot go / no-go
 
 - [ ] `verifyCertificate` has App Check and durable rate limiting active.
-- [ ] Participant data is not readable from public Firebase paths.
+- [ ] Recipient data is not readable from public Firebase paths.
 - [ ] Pilot download results and support volume are reviewed after roughly seven days.
 - [ ] Organizers can complete the workflow using the public [playbook](https://certify.rsamdio.org/playbook).
+- [ ] Dual-role access checks in [ACCESS_VERIFY.md](ACCESS_VERIFY.md) pass for a throwaway manager account (promote → demote leaves activity access).
+- [ ] Public activity pages with rich-text descriptions render on Netlify (no SSR 500 from HTML sanitize).

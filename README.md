@@ -1,4 +1,4 @@
-[![Netlify Status](https://api.netlify.com/api/v1/badges/f98e6928-1e09-46de-8f9d-49a03b6287f7/deploy-status)](https://app.netlify.com/projects/rsacertify/deploys)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/f98e6058-1e09-46de-8f9d-49a03b6287f7/deploy-status)](https://app.netlify.com/projects/rsacertify/deploys)
 
 # Rotaract Certify
 
@@ -39,4 +39,15 @@ Netlify runs `npm run build` for the Next.js app according to `netlify.toml`. Fi
 
 `verifyCertificate` requires Firebase App Check and applies a durable rate limit. Public pages use RTDB read models, while recipient data remains private. Google Sheets imports only support public sheets; organizers can upload CSV files instead.
 
-See [the launch checklist](docs/LAUNCH_CHECKLIST.md) for production configuration and pilot checks, and [the organizer playbook](https://certify.rsamdio.org/playbook) for the create-to-publish workflow.
+Activity descriptions use TipTap in admin and are sanitized with `sanitize-html` for public SSR (avoid jsdom-based sanitizers on Netlify).
+
+## Docs
+
+| Doc | Purpose |
+| --- | --- |
+| [AGENTS.md](AGENTS.md) | Agent / contributor working context |
+| [DESIGN.md](DESIGN.md) | Public + admin UX binding rules |
+| [docs/LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md) | Production configuration and pilot checks |
+| [docs/ACCESS_MODEL.md](docs/ACCESS_MODEL.md) | Organizer roles, invites, dual membership |
+| [docs/ACCESS_VERIFY.md](docs/ACCESS_VERIFY.md) | Access promote/demote test matrix |
+| [Organizer playbook](https://certify.rsamdio.org/playbook) | Create → publish workflow for organizers |

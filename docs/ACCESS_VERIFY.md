@@ -1,9 +1,10 @@
 # Access management verification matrix
 
-Run against production (or staging) with a throwaway Google account before relying on dual-role in ops.
+Standing checklist for organizer access (promote / demote / lockout). Run against production or staging with a throwaway Google account before relying on dual-role in ops.
+
 Policy: [ACCESS_MODEL.md](./ACCESS_MODEL.md).
 
-## Code review sign-off (this release)
+## Implementation sign-off
 
 | Item | Status |
 | --- | --- |
