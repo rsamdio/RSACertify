@@ -7,6 +7,7 @@ import { getFirebaseServices } from "@/lib/firebase-client";
 import { syncAdminClaims } from "@/lib/callables";
 import { fetchAuthedRtdbJson } from "@/lib/rtdb-rest";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { descriptionToPlainText } from "@/lib/rich-text";
 
 type CatalogRow = {
   slug: string;
@@ -121,7 +122,7 @@ function ActivitiesList() {
       return (
         row.title.toLowerCase().includes(q) ||
         row.slug.toLowerCase().includes(q) ||
-        String(row.description || "")
+        descriptionToPlainText(String(row.description || ""))
           .toLowerCase()
           .includes(q)
       );
@@ -201,7 +202,7 @@ function ActivitiesList() {
           <h3>No activities yet</h3>
           <p>
             {canCreate
-              ? "Create an activity, add people, then upload your certificate design."
+              ? "Create an activity, add recipients, then upload your certificate design."
               : "No activities have been shared with your account yet."}
           </p>
         </div>
@@ -223,7 +224,7 @@ function ActivitiesList() {
                 <th>Activity</th>
                 <th>Status</th>
                 <th>Date</th>
-                <th>People</th>
+                <th>Recipients</th>
                 <th>Downloaded</th>
                 <th className="admin-row-actions-head">Actions</th>
               </tr>
@@ -292,7 +293,7 @@ function ActivitiesList() {
         title="Delete this activity?"
         body={
           confirmDelete
-            ? `Permanently delete “${confirmDelete.title}” along with its people list and managers. This cannot be undone.`
+            ? `Permanently delete “${confirmDelete.title}” along with its recipient list and managers. This cannot be undone.`
             : ""
         }
         confirmLabel="Delete activity"

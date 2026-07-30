@@ -4,7 +4,7 @@
 
 | Team | Handles |
 | --- | --- |
-| Activity organizers and managers | People-list corrections, lookup details, and design questions |
+| Activity organizers and managers | Recipient-list corrections, lookup details, and design questions |
 | RSAMDIO (`rsamdio@gmail.com`) | Organizer access, district questions, and escalation |
 | ZeoSpec (`contact@zeospec.com`) | Platform defects, Firebase/Netlify releases, App Check, and secrets |
 
@@ -23,9 +23,9 @@
 ## Seed and validate a pilot
 
 1. Create one to three real activities and make them Active.
-2. Follow the fixed editor sequence: Details → Design → People → Placement → Managers.
+2. Follow the fixed editor sequence: Details → Design → Recipients → Placement → Managers.
 3. Upload certificate designs whose longest edge is at most 3000 px. Use distinct design keys such as `gold`, `silver`, and `bronze`.
-4. Add people by CSV or a public Google Sheet, then spot-check lookup and PDF download.
+4. Add recipients by CSV or a public Google Sheet, then spot-check lookup and PDF download.
 5. Verify a public sheet can be read without authentication. Private Sheets are unsupported; there is no Netlify service account.
 6. Test lookup and download on iOS Safari and Android Chrome.
 7. Share the public activity URL from the publish flow.

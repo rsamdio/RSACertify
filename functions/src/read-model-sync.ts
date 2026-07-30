@@ -10,14 +10,14 @@ type PublicCatalogItem = {
   ogImage: string;
   updatedAt: number;
   seo?: Record<string, unknown>;
+  participantsCount: number;
+  certificatesCount: number;
 };
 
 type PublicActivityPayload = PublicCatalogItem & {
   defaultTemplateKey: string;
   templates: Record<string, { url: string; fields?: Record<string, unknown> }>;
   participantFields: unknown[];
-  participantsCount: number;
-  certificatesCount: number;
 };
 
 /**
@@ -95,6 +95,11 @@ export const syncActivityCatalogToRtdb = fn.firestore
             .update({ participantsCount, certificatesCount })
             .catch(() => undefined);
         }
+        if (status === 'active') {
+          await publicCatalogRef
+            .update({ participantsCount, certificatesCount })
+            .catch(() => undefined);
+        }
         return;
       }
     }
@@ -115,6 +120,9 @@ export const syncActivityCatalogToRtdb = fn.firestore
       };
     }
 
+    const participantsCount = Number(data.participantsCount || 0);
+    const certificatesCount = Number(data.certificatesCount || 0);
+
     const catalogPayload: PublicCatalogItem = {
       slug,
       title: String(data.title || ''),
@@ -127,24 +135,20 @@ export const syncActivityCatalogToRtdb = fn.firestore
         ? Object.fromEntries(
             Object.entries(data.seo as Record<string, unknown>).filter(([key]) => key !== 'ogImage')
           )
-        : {}) as Record<string, unknown>
+        : {}) as Record<string, unknown>,
+      participantsCount,
+      certificatesCount
     };
 
     const publicActivityPayload: PublicActivityPayload = {
       ...catalogPayload,
       defaultTemplateKey: String(data.defaultTemplateKey || ''),
       templates,
-      participantFields: Array.isArray(data.participantFields) ? data.participantFields : [],
-      participantsCount: Number(data.participantsCount || 0),
-      certificatesCount: Number(data.certificatesCount || 0)
+      participantFields: Array.isArray(data.participantFields) ? data.participantFields : []
     };
 
     // Admin RTDB catalog includes drafts for organizer workspace.
-    await adminCatalogRef.set({
-      ...catalogPayload,
-      participantsCount: publicActivityPayload.participantsCount,
-      certificatesCount: publicActivityPayload.certificatesCount
-    });
+    await adminCatalogRef.set(catalogPayload);
 
     if (status === 'active') {
       await publicCatalogRef.set(catalogPayload);

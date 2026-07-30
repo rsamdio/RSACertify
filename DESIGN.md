@@ -10,9 +10,9 @@
 ## Admin workflow (binding)
 
 1. **Details** — title, description, status, SEO share fields  
-2. **Design** — upload PNG artwork (keys for people assignment)  
-3. **Placement** — place certificate fields on each design  
-4. **People** — certificate fields, CSV/Sheet import, add people, assign designs  
+2. **Design** — upload PNG artwork (keys for recipient assignment)  
+3. **Recipients** — certificate fields, CSV/Sheet import, add recipients, assign designs  
+4. **Placement** — place certificate fields on each design  
 5. **Managers** — invites  
 
 Create activity lands on **Design**. Spreadsheet import prefers **CSV file upload**, with Google Sheet as an option.
@@ -22,5 +22,5 @@ Create activity lands on **Design**. Spreadsheet import prefers **CSV file uploa
 - Speak to certificate seekers and organizers — never to engineers.
 - Ban in UI: R2, Firestore, RTDB, canvas, browser generation, callable, database, Platform/Management jargon.
 - Public CTA language: find → confirm → **download your certificate**.
-- Admin CTA language: add people → upload design → place text → publish.
-- Prefer “people”, “design”, “placement”, “organizer” over “participants”, “templates”, “layout”, “platform admin”.
+- Admin CTA language: add recipients → upload design → place text → publish.
+- Prefer “recipients”, “design”, “placement”, “organizer” over “participants”, “templates”, “layout”, “platform admin”.

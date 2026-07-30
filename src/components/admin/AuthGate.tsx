@@ -26,6 +26,8 @@ type RoleState = {
   role: "super" | "platform" | "manager" | null;
 };
 
+const CLAIMS_CACHE_KEY = (uid: string) => `rsacertify:claimsAt:${uid}`;
+
 function AuthEntryShell({
   children,
   title,
@@ -67,7 +69,7 @@ function AuthEntryShell({
             <h3>Manage activities</h3>
             <p>
               Follow the{" "}
-              <Link href="/playbook">organizer playbook</Link>: designs, people, placement, then
+              <Link href="/playbook">organizer playbook</Link>: designs, recipients, placement, then
               publish. More templates live in the{" "}
               <a href="https://library.rsamdio.org/" target="_blank" rel="noopener noreferrer">
                 Rotaract Library
@@ -99,6 +101,69 @@ function inviteSummary(invite: PendingInvite) {
   return "Organizer access";
 }
 
+function managedFromClaims(claims: Record<string, unknown>): Record<string, boolean> {
+  const raw = claims.managed_activities;
+  if (!raw || typeof raw !== "object") return {};
+  return raw as Record<string, boolean>;
+}
+
+async function resolveOrganizerRole(
+  user: User
+): Promise<{ role: RoleState["role"]; pending: PendingInvite[] }> {
+  const { db } = getFirebaseServices();
+  const adminDoc = await getDoc(doc(db, "admins", user.uid));
+
+  // Stale platform claim without admin doc → force sync before deciding.
+  let token = await user.getIdTokenResult(true);
+  let claimRole = String(token.claims.role || "");
+  const managed = managedFromClaims(token.claims as Record<string, unknown>);
+  const hasManaged = Object.keys(managed).some((slug) => managed[slug]);
+
+  if (!adminDoc.exists() && (claimRole === "platform" || claimRole === "super")) {
+    try {
+      await syncAdminClaims();
+      sessionStorage.setItem(CLAIMS_CACHE_KEY(user.uid), String(Date.now()));
+      await user.getIdToken(true);
+      token = await user.getIdTokenResult(true);
+      claimRole = String(token.claims.role || "");
+    } catch {
+      // continue with refreshed token best-effort
+    }
+  }
+
+  if (adminDoc.exists()) {
+    const role = (adminDoc.data()?.role as "super" | "platform") || "platform";
+    let pending: PendingInvite[] = [];
+    try {
+      const mine = await getMyPendingInvites();
+      pending = (mine.invites || []).filter((invite) => invite.type === "manager");
+    } catch {
+      pending = [];
+    }
+    return { role, pending };
+  }
+
+  const freshManaged = managedFromClaims(token.claims as Record<string, unknown>);
+  const freshHasManaged = Object.keys(freshManaged).some((slug) => freshManaged[slug]);
+  if (claimRole === "manager" || freshHasManaged || hasManaged) {
+    let pending: PendingInvite[] = [];
+    try {
+      const mine = await getMyPendingInvites();
+      pending = mine.invites || [];
+    } catch {
+      pending = [];
+    }
+    return { role: "manager", pending };
+  }
+
+  try {
+    const mine = await getMyPendingInvites();
+    return { role: null, pending: mine.invites || [] };
+  } catch {
+    return { role: null, pending: [] };
+  }
+}
+
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<RoleState>({
     ready: false,
@@ -108,7 +173,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   });
   const [signingIn, setSigningIn] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
-  const [accepting, setAccepting] = useState(false);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [acceptError, setAcceptError] = useState("");
 
   useEffect(() => {
@@ -116,7 +181,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       setState({ ready: true, user: null, allowed: false, role: null });
       return;
     }
-    const { auth, db } = getFirebaseServices();
+    const { auth } = getFirebaseServices();
     return onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setPendingInvites([]);
@@ -124,35 +189,21 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         return;
       }
       try {
-        const cacheKey = `rsacertify:claimsAt:${user.uid}`;
+        const cacheKey = CLAIMS_CACHE_KEY(user.uid);
         const last = Number(sessionStorage.getItem(cacheKey) || 0);
         const stale = Date.now() - last > 5 * 60_000;
-        if (stale) {
+        const adminSnap = await getDoc(doc(getFirebaseServices().db, "admins", user.uid));
+        // Always sync when no admin doc (managers / demotion / first entry).
+        if (stale || !adminSnap.exists()) {
           await syncAdminClaims();
           sessionStorage.setItem(cacheKey, String(Date.now()));
         }
       } catch {
         // Claims sync may fail before seed; continue with Firestore admin check.
       }
-      const token = await user.getIdTokenResult(true);
-      const claimRole = String(token.claims.role || "");
-      const adminDoc = await getDoc(doc(db, "admins", user.uid));
-      let role: RoleState["role"] = null;
-      if (adminDoc.exists()) {
-        role = (adminDoc.data()?.role as "super" | "platform") || "platform";
-      } else if (claimRole === "manager") {
-        role = "manager";
-      }
-      if (!role) {
-        try {
-          const mine = await getMyPendingInvites();
-          setPendingInvites(mine.invites || []);
-        } catch {
-          setPendingInvites([]);
-        }
-      } else {
-        setPendingInvites([]);
-      }
+
+      const { role, pending } = await resolveOrganizerRole(user);
+      setPendingInvites(pending);
       setState({
         ready: true,
         user,
@@ -174,38 +225,65 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function acceptOne(inviteId: string) {
+    if (!state.user) return;
+    setAcceptingId(inviteId);
+    setAcceptError("");
+    try {
+      await acceptInvite(inviteId);
+      sessionStorage.removeItem(CLAIMS_CACHE_KEY(state.user.uid));
+      await syncAdminClaims();
+      const { auth } = getFirebaseServices();
+      const user = auth.currentUser;
+      if (!user) return;
+      await user.getIdToken(true);
+      const { role, pending } = await resolveOrganizerRole(user);
+      setPendingInvites(pending);
+      setState({ ready: true, user, allowed: Boolean(role), role });
+      if (!role) {
+        setAcceptError(
+          "Invite accepted, but access didn’t refresh. Sign out and sign in again, or retry."
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      setAcceptError(
+        "Could not accept the invite. Make sure you’re signed in with the invited Google account."
+      );
+    } finally {
+      setAcceptingId(null);
+    }
+  }
+
   async function acceptAllPending() {
     if (!state.user || pendingInvites.length === 0) return;
-    setAccepting(true);
+    setAcceptingId("all");
     setAcceptError("");
     try {
       for (const invite of pendingInvites) {
         await acceptInvite(invite.id);
       }
+      sessionStorage.removeItem(CLAIMS_CACHE_KEY(state.user.uid));
       await syncAdminClaims();
-      const { auth, db } = getFirebaseServices();
+      const { auth } = getFirebaseServices();
       const user = auth.currentUser;
       if (!user) return;
       await user.getIdToken(true);
-      const token = await user.getIdTokenResult(true);
-      const claimRole = String(token.claims.role || "");
-      const adminDoc = await getDoc(doc(db, "admins", user.uid));
-      let role: RoleState["role"] = null;
-      if (adminDoc.exists()) {
-        role = (adminDoc.data()?.role as "super" | "platform") || "platform";
-      } else if (claimRole === "manager") {
-        role = "manager";
-      }
-      setPendingInvites([]);
+      const { role, pending } = await resolveOrganizerRole(user);
+      setPendingInvites(pending);
       setState({ ready: true, user, allowed: Boolean(role), role });
       if (!role) {
-        setAcceptError("Invite accepted, but access didn’t refresh. Sign out and sign in again.");
+        setAcceptError(
+          "Invite accepted, but access didn’t refresh. Sign out and sign in again, or retry."
+        );
       }
     } catch (err) {
       console.error(err);
-      setAcceptError("Could not accept the invite. Make sure you’re signed in with the invited Google account.");
+      setAcceptError(
+        "Could not accept the invite. Make sure you’re signed in with the invited Google account."
+      );
     } finally {
-      setAccepting(false);
+      setAcceptingId(null);
     }
   }
 
@@ -269,18 +347,31 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           <p className="auth-entry-account">{state.user.email}</p>
           <ul className="auth-invite-list">
             {pendingInvites.map((invite) => (
-              <li key={invite.id}>{inviteSummary(invite)}</li>
+              <li key={invite.id}>
+                <span>{inviteSummary(invite)}</span>
+                <button
+                  className="btn btn-secondary btn-compact"
+                  type="button"
+                  style={{ marginLeft: "0.75rem" }}
+                  disabled={Boolean(acceptingId)}
+                  onClick={() => acceptOne(invite.id)}
+                >
+                  {acceptingId === invite.id ? "Accepting…" : "Accept"}
+                </button>
+              </li>
             ))}
           </ul>
           {acceptError ? <p className="status-error">{acceptError}</p> : null}
-          <button
-            className="btn btn-block"
-            type="button"
-            onClick={acceptAllPending}
-            disabled={accepting}
-          >
-            {accepting ? "Accepting…" : "Accept invite"}
-          </button>
+          {pendingInvites.length > 1 ? (
+            <button
+              className="btn btn-block"
+              type="button"
+              onClick={acceptAllPending}
+              disabled={Boolean(acceptingId)}
+            >
+              {acceptingId === "all" ? "Accepting…" : "Accept all invites"}
+            </button>
+          ) : null}
           <button
             className="btn btn-secondary btn-block"
             type="button"
@@ -319,6 +410,34 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       photoURL={state.user.photoURL}
       role={state.role}
     >
+      {pendingInvites.length > 0 ? (
+        <div className="card admin-panel stack" style={{ marginBottom: "1rem" }}>
+          <div>
+            <h3 style={{ margin: 0 }}>Pending invites</h3>
+            <p className="meta" style={{ margin: "0.35rem 0 0" }}>
+              Accept to add another role. Activity manager rows are kept if you become a platform
+              admin.
+            </p>
+          </div>
+          {acceptError ? <p className="status-error">{acceptError}</p> : null}
+          <ul className="auth-invite-list">
+            {pendingInvites.map((invite) => (
+              <li key={invite.id}>
+                <span>{inviteSummary(invite)}</span>
+                <button
+                  className="btn btn-compact"
+                  type="button"
+                  style={{ marginLeft: "0.75rem" }}
+                  disabled={Boolean(acceptingId)}
+                  onClick={() => acceptOne(invite.id)}
+                >
+                  {acceptingId === invite.id ? "Accepting…" : "Accept"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {children}
     </AdminShell>
   );

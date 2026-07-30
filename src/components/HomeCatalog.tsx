@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { descriptionToPlainText } from "@/lib/rich-text";
 
 export type CatalogItem = {
   slug: string;
@@ -35,9 +36,10 @@ export function HomeCatalog({
     const q = query.trim().toLowerCase();
     if (!q) return activities;
     return activities.filter((item) => {
+      const plain = descriptionToPlainText(item.description).toLowerCase();
       return (
         item.title.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q) ||
+        plain.includes(q) ||
         item.slug.toLowerCase().includes(q)
       );
     });
@@ -107,7 +109,8 @@ export function HomeCatalog({
                 </div>
                 <h3 className="catalog-card-title">{activity.title}</h3>
                 <p className="catalog-card-desc">
-                  {activity.description || "Download your verified certificate for this activity."}
+                  {descriptionToPlainText(activity.description) ||
+                    "Download your verified certificate for this activity."}
                 </p>
                 <span className="catalog-card-cta">
                   Get certificate <span aria-hidden="true">→</span>

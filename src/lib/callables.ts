@@ -93,6 +93,12 @@ export async function listPlatformInvites() {
   return result.data as { invites: PendingInvite[] };
 }
 
+export async function listActivityInvites(activitySlug: string) {
+  const fn = httpsCallable(getFirebaseServices().functions, "listActivityInvites");
+  const result = await fn({ activitySlug });
+  return result.data as { invites: PendingInvite[] };
+}
+
 export async function revokeInvite(inviteId: string) {
   const fn = httpsCallable(getFirebaseServices().functions, "revokeInvite");
   await fn({ inviteId });

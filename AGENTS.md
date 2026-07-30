@@ -16,7 +16,7 @@ This is not a Jekyll or Decap CMS site. Do not restore legacy layouts, static HT
 
 - Firestore is the authoritative application store.
 - RTDB supplies the public catalog and activity read models at `public/catalog` and `public/activities/{slug}`.
-- Public certificate lookup calls `verifyCertificate`; participant records are not publicly readable.
+- Public certificate lookup calls `verifyCertificate`; recipient records are not publicly readable.
 - The client initializes Functions with `getFunctions(app, "asia-southeast1")`.
 - Certificate artwork is served from `cert.rsamdio.org`; the Functions code signs R2 uploads.
 - Organizers authenticate with Firebase Google sign-in.
@@ -25,9 +25,9 @@ This is not a Jekyll or Decap CMS site. Do not restore legacy layouts, static HT
 
 The activity editor tab order is fixed:
 
-**Details → Design → People → Placement → Managers**
+**Details → Design → Recipients → Placement → Managers**
 
-The forward controls follow **Design → People → Placement → Managers**. New activities open on Design. Design keys must be lowercase letters, digits, hyphens, or underscores; use the UI hint `gold / silver / bronze`. Certificate fields live on People (needed before Placement).
+The forward controls follow **Design → Recipients → Placement → Managers**. New activities open on Design. Design keys must be lowercase letters, digits, hyphens, or underscores; use the UI hint `gold / silver / bronze`. Certificate fields live on Recipients (needed before Placement).
 
 The public organizer guide is at `/playbook`. The footer’s Explore section does not link to Library or duplicate the playbook link; Rotaract Library remains a card under “More from RSAMDIO.”
 
@@ -51,6 +51,7 @@ The public organizer guide is at `/playbook`. The footer’s Explore section doe
 | Firebase access rules | `firestore.rules`, `database.rules.json`, `storage.rules` |
 | CSP and request headers | `src/middleware.ts`, `netlify.toml` |
 | Launch procedure | `docs/LAUNCH_CHECKLIST.md` |
+| Organizer access model | `docs/ACCESS_MODEL.md` |
 
 ## Commands
 

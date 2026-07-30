@@ -38,10 +38,14 @@ export function getEventConfigCacheKey(eventId: string): string {
 }
 
 /**
- * Clear all caches (useful for testing or manual invalidation)
+ * Generate cache key for admin auth checks (legacy; verifyAdmin no longer caches positives).
  */
 export function getAdminCacheKey(uid: string): string {
     return `admin_${uid}`;
+}
+
+export function invalidateAdminCache(uid: string): void {
+    adminCache.del(getAdminCacheKey(uid));
 }
 
 export function clearAllCaches(): void {

@@ -37,6 +37,6 @@ firebase deploy --only functions,firestore,database,storage
 
 Netlify runs `npm run build` for the Next.js app according to `netlify.toml`. Firebase Functions and the web client both use `asia-southeast1`.
 
-`verifyCertificate` requires Firebase App Check and applies a durable rate limit. Public pages use RTDB read models, while participant data remains private. Google Sheets imports only support public sheets; organizers can upload CSV files instead.
+`verifyCertificate` requires Firebase App Check and applies a durable rate limit. Public pages use RTDB read models, while recipient data remains private. Google Sheets imports only support public sheets; organizers can upload CSV files instead.
 
 See [the launch checklist](docs/LAUNCH_CHECKLIST.md) for production configuration and pilot checks, and [the organizer playbook](https://certify.rsamdio.org/playbook) for the create-to-publish workflow.

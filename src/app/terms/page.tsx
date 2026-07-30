@@ -60,7 +60,7 @@ export default function TermsPage() {
           <li>browser-based generation and download of digital certificate PDFs</li>
           <li>
             an invitation-only organizer workspace for activity details, certificate designs,
-            fields, participant records, CSV imports, public Google Sheets imports, exports, and
+            fields, recipient records, CSV imports, public Google Sheets imports, exports, and
             manager access
           </li>
           <li>role-based administrator and activity-manager access through Google sign-in</li>
@@ -132,14 +132,14 @@ export default function TermsPage() {
         <p>
           Platform administrators may manage activities across the Service. Activity managers may
           manage only the activities for which they are authorized. RSAMDIO may suspend, remove, or
-          limit access where reasonably necessary to protect the Service, participants, organizers,
+          limit access where reasonably necessary to protect the Service, recipients, organizers,
           or RSAMDIO.
         </p>
 
         <h2>6. Organizer data responsibilities</h2>
         <p>
           Organizers are responsible for the information, certificate content, designs, and
-          instructions they create or upload. Before uploading participant information, an organizer
+          instructions they create or upload. Before uploading recipient information, an organizer
           must ensure that they:
         </p>
         <ul>
@@ -148,13 +148,13 @@ export default function TermsPage() {
             applicable law
           </li>
           <li>collect and upload only information necessary for the activity and certificate</li>
-          <li>provide accurate participant and certificate information</li>
+          <li>provide accurate recipient and certificate information</li>
           <li>
             use custom certificate fields responsibly and do not request sensitive information unless
             expressly approved by RSAMDIO and legally permitted
           </li>
-          <li>respond appropriately to participant correction, deletion, and privacy requests</li>
-          <li>maintain appropriate access controls for exported files and participant lists</li>
+          <li>respond appropriately to recipient correction, deletion, and privacy requests</li>
+          <li>maintain appropriate access controls for exported files and recipient lists</li>
           <li>
             comply with applicable privacy, safeguarding, intellectual-property, and
             anti-discrimination laws
@@ -162,7 +162,7 @@ export default function TermsPage() {
         </ul>
 
         <h2>7. CSV and Google Sheets imports</h2>
-        <p>Organizers may import participant data from a CSV file or from a public Google Sheet.</p>
+        <p>Organizers may import recipient data from a CSV file or from a public Google Sheet.</p>
         <p>
           A Google Sheet import requires the organizer to share the sheet as “Anyone with the link.”
           This may allow anyone with the link to access the sheet outside the Service. Organizers
@@ -200,7 +200,7 @@ export default function TermsPage() {
           <li>violate law, privacy rights, intellectual-property rights, or safeguarding obligations</li>
           <li>upload unlawful, discriminatory, defamatory, infringing, malicious, or misleading content</li>
           <li>create, issue, alter, or present fraudulent certificates</li>
-          <li>access, export, collect, or disclose participant data without authorization</li>
+          <li>access, export, collect, or disclose recipient data without authorization</li>
           <li>interfere with the Service, its security, rate limits, App Check, or other users</li>
           <li>
             introduce malware, attempt unauthorized access, or test the Service for vulnerabilities
@@ -213,13 +213,13 @@ export default function TermsPage() {
         <h2>10. Privacy</h2>
         <p>
           Our processing of personal information is described in the{" "}
-          <Link href="/privacy">Privacy Policy</Link>. Organizers acknowledge that participant
-          information is not public through participant lists, but a person who correctly supplies a
+          <Link href="/privacy">Privacy Policy</Link>. Organizers acknowledge that recipient
+          information is not public through recipient lists, but a person who correctly supplies a
           lookup value may retrieve the corresponding certificate data.
         </p>
         <p>
           You must not upload information that you are not authorized to process. You remain
-          responsible for communications and notices required between you and your participants.
+          responsible for communications and notices required between you and your recipients.
         </p>
 
         <h2>11. Third-party services</h2>
@@ -272,7 +272,7 @@ export default function TermsPage() {
         <p>
           We may suspend or terminate access, remove content, or restrict use if we reasonably
           believe that you have breached these Terms, created legal or security risk, misused
-          participant information, created fraudulent certificates, or endangered the Service or
+          recipient information, created fraudulent certificates, or endangered the Service or
           others.
         </p>
         <p>

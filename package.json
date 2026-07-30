@@ -11,7 +11,12 @@
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",
+    "@tiptap/extension-underline": "^3.29.2",
+    "@tiptap/pm": "^3.29.2",
+    "@tiptap/react": "^3.29.2",
+    "@tiptap/starter-kit": "^3.29.2",
     "firebase": "^12.9.0",
+    "isomorphic-dompurify": "^3.19.0",
     "jspdf": "^2.5.2",
     "next": "^15.1.0",
     "react": "^19.0.0",

@@ -5,7 +5,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getAdmin, getFieldValue, ensureAdmin } from './admin';
 import { withMonitoring } from './monitoring';
-import { getAdminRole, verifyPlatformOrManager } from './auth';
+import { getAdminRole, verifyPlatformOrManager, clearAdminAuthCache } from './auth';
 import { getSecretValue, REQUIRED_RUNTIME_SECRETS } from './secrets';
 import { refreshClaimsForUid } from './claims';
 
@@ -575,6 +575,22 @@ export const acceptInvite = fn.https.onCall(
         if (!context.auth || !context.auth.token.email) {
             throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
         }
+        if (context.auth.token.email_verified !== true) {
+            throw new functions.https.HttpsError(
+                'permission-denied',
+                'Verified Google email required'
+            );
+        }
+        const signInProvider = String(
+            (context.auth.token.firebase as { sign_in_provider?: string } | undefined)
+                ?.sign_in_provider || ''
+        );
+        if (signInProvider && signInProvider !== 'google.com') {
+            throw new functions.https.HttpsError(
+                'permission-denied',
+                'Google sign-in required to accept invites'
+            );
+        }
         const inviteId = String(data?.inviteId || '');
         if (!inviteId) {
             throw new functions.https.HttpsError('invalid-argument', 'inviteId is required');
@@ -591,16 +607,34 @@ export const acceptInvite = fn.https.onCall(
             throw new functions.https.HttpsError('permission-denied', 'Invite email mismatch');
         }
         const expiresAt = Number(invite.expiresAt || 0);
-        if (expiresAt && expiresAt < Date.now()) {
+        if (!expiresAt || expiresAt < Date.now()) {
             throw new functions.https.HttpsError('permission-denied', 'Invite expired');
         }
         const batch = getAdmin().firestore().batch();
         if (invite.type === 'platform') {
-            batch.set(getAdmin().firestore().doc(`admins/${context.auth.uid}`), {
-                email: authEmail,
-                role: 'platform',
-                createdAt: getFieldValue().serverTimestamp()
-            }, { merge: true });
+            const existingAdmin = await getAdmin()
+                .firestore()
+                .doc(`admins/${context.auth.uid}`)
+                .get();
+            if (existingAdmin.exists && String(existingAdmin.data()?.role || '') === 'super') {
+                batch.delete(inviteRef);
+                await batch.commit();
+                try {
+                    await refreshClaimsForUid(context.auth.uid);
+                } catch (err) {
+                    console.error('[acceptInvite] claims refresh failed after accept', err);
+                }
+                return { ok: true };
+            }
+            batch.set(
+                getAdmin().firestore().doc(`admins/${context.auth.uid}`),
+                {
+                    email: authEmail,
+                    role: 'platform',
+                    createdAt: getFieldValue().serverTimestamp()
+                },
+                { merge: true }
+            );
         } else if (invite.type === 'manager' && invite.activitySlug) {
             batch.set(
                 getAdmin().firestore().doc(`activities/${invite.activitySlug}/managers/${context.auth.uid}`),
@@ -617,7 +651,12 @@ export const acceptInvite = fn.https.onCall(
         }
         batch.delete(inviteRef);
         await batch.commit();
-        await refreshClaimsForUid(context.auth.uid);
+        try {
+            await refreshClaimsForUid(context.auth.uid);
+        } catch (err) {
+            // Manager/admin row is already written; claims can be retried via syncAdminClaims.
+            console.error('[acceptInvite] claims refresh failed after accept', err);
+        }
         return { ok: true };
     }, 'acceptInvite')
 );
@@ -630,6 +669,34 @@ export const invitePlatformAdmin = fn.https.onCall(
         }
         const email = String(data?.email || '').trim().toLowerCase();
         if (!email) throw new functions.https.HttpsError('invalid-argument', 'email is required');
+
+        const existingAdmins = await getAdmin()
+            .firestore()
+            .collection('admins')
+            .where('email', '==', email)
+            .limit(1)
+            .get();
+        if (!existingAdmins.empty) {
+            throw new functions.https.HttpsError(
+                'already-exists',
+                'That email is already a platform admin'
+            );
+        }
+
+        const pending = await getAdmin()
+            .firestore()
+            .collection('invites')
+            .where('email', '==', email)
+            .where('type', '==', 'platform')
+            .limit(1)
+            .get();
+        if (!pending.empty) {
+            throw new functions.https.HttpsError(
+                'already-exists',
+                'A pending platform invite already exists for that email'
+            );
+        }
+
         const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
         const ref = await getAdmin().firestore().collection('invites').add({
             email,
@@ -651,6 +718,40 @@ export const inviteActivityManager = fn.https.onCall(
         if (!email || !activitySlug) {
             throw new functions.https.HttpsError('invalid-argument', 'email and activitySlug are required');
         }
+
+        const activityDoc = await getAdmin().firestore().doc(`activities/${activitySlug}`).get();
+        if (!activityDoc.exists) {
+            throw new functions.https.HttpsError('not-found', 'Activity not found');
+        }
+
+        const managersSnap = await getAdmin()
+            .firestore()
+            .collection(`activities/${activitySlug}/managers`)
+            .where('email', '==', email)
+            .limit(1)
+            .get();
+        if (!managersSnap.empty) {
+            throw new functions.https.HttpsError(
+                'already-exists',
+                'That email is already a manager of this activity'
+            );
+        }
+
+        const pending = await getAdmin()
+            .firestore()
+            .collection('invites')
+            .where('email', '==', email)
+            .where('type', '==', 'manager')
+            .where('activitySlug', '==', activitySlug)
+            .limit(1)
+            .get();
+        if (!pending.empty) {
+            throw new functions.https.HttpsError(
+                'already-exists',
+                'A pending manager invite already exists for that email'
+            );
+        }
+
         const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
         const ref = await getAdmin().firestore().collection('invites').add({
             email,
@@ -691,9 +792,38 @@ export const listPlatformInvites = fn.https.onCall(
     }, 'listPlatformInvites')
 );
 
+export const listActivityInvites = fn.https.onCall(
+    withMonitoring(async (data, context) => {
+        const activitySlug = String(data?.activitySlug || '').trim();
+        if (!activitySlug) {
+            throw new functions.https.HttpsError('invalid-argument', 'activitySlug is required');
+        }
+        await verifyPlatformOrManager(context, activitySlug);
+        const snap = await getAdmin()
+            .firestore()
+            .collection('invites')
+            .where('activitySlug', '==', activitySlug)
+            .get();
+        const invites = snap.docs
+            .map((doc) => {
+                const data = doc.data() || {};
+                return {
+                    id: doc.id,
+                    email: String(data.email || ''),
+                    type: String(data.type || 'manager'),
+                    activitySlug,
+                    createdAt: data.createdAt?.toMillis?.() || Number(data.createdAt) || 0,
+                    expiresAt: Number(data.expiresAt || 0)
+                };
+            })
+            .filter((invite) => invite.type === 'manager')
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        return { invites };
+    }, 'listActivityInvites')
+);
+
 export const revokeInvite = fn.https.onCall(
     withMonitoring(async (data, context) => {
-        const role = await getAdminRole(context);
         const inviteId = String(data?.inviteId || '').trim();
         if (!inviteId) {
             throw new functions.https.HttpsError('invalid-argument', 'inviteId is required');
@@ -704,15 +834,20 @@ export const revokeInvite = fn.https.onCall(
             throw new functions.https.HttpsError('not-found', 'Invite not found');
         }
         const invite = inviteDoc.data() || {};
-        if (invite.type === 'platform' && role !== 'super') {
-            throw new functions.https.HttpsError('permission-denied', 'Super role required');
-        }
-        if (invite.type === 'manager') {
+        if (invite.type === 'platform') {
+            const role = await getAdminRole(context);
+            if (role !== 'super') {
+                throw new functions.https.HttpsError('permission-denied', 'Super role required');
+            }
+        } else if (invite.type === 'manager') {
+            // Platform/super only (matches firestore.rules managers write policy).
+            await getAdminRole(context);
             const activitySlug = String(invite.activitySlug || '');
             if (!activitySlug) {
                 throw new functions.https.HttpsError('invalid-argument', 'Invalid manager invite');
             }
-            await verifyPlatformOrManager(context, activitySlug);
+        } else {
+            throw new functions.https.HttpsError('invalid-argument', 'Invalid invite type');
         }
         await inviteRef.delete();
         return { ok: true };
@@ -744,7 +879,7 @@ export const getMyPendingInvites = fn.https.onCall(
                     expiresAt: Number(data.expiresAt || 0)
                 };
             })
-            .filter((invite) => !invite.expiresAt || invite.expiresAt >= now);
+            .filter((invite) => invite.expiresAt && invite.expiresAt >= now);
         return { invites };
     }, 'getMyPendingInvites')
 );
@@ -758,10 +893,14 @@ export const removePlatformAdmin = fn.https.onCall(
         const uid = String(data?.uid || '');
         if (!uid) throw new functions.https.HttpsError('invalid-argument', 'uid is required');
         const target = await getAdmin().firestore().doc(`admins/${uid}`).get();
+        if (!target.exists) {
+            throw new functions.https.HttpsError('not-found', 'Platform admin not found');
+        }
         if (target.data()?.role === 'super') {
             throw new functions.https.HttpsError('permission-denied', 'Cannot remove super admin');
         }
         await getAdmin().firestore().doc(`admins/${uid}`).delete();
+        clearAdminAuthCache(uid);
         await refreshClaimsForUid(uid);
         return { ok: true };
     }, 'removePlatformAdmin')
@@ -775,7 +914,12 @@ export const removeActivityManager = fn.https.onCall(
         if (!uid || !activitySlug) {
             throw new functions.https.HttpsError('invalid-argument', 'uid and activitySlug are required');
         }
-        await getAdmin().firestore().doc(`activities/${activitySlug}/managers/${uid}`).delete();
+        const managerRef = getAdmin().firestore().doc(`activities/${activitySlug}/managers/${uid}`);
+        const managerDoc = await managerRef.get();
+        if (!managerDoc.exists) {
+            throw new functions.https.HttpsError('not-found', 'Manager not found');
+        }
+        await managerRef.delete();
         await refreshClaimsForUid(uid);
         return { ok: true };
     }, 'removeActivityManager')

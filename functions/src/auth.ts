@@ -1,9 +1,10 @@
 import * as functions from 'firebase-functions/v1';
 import { getAdmin, ensureAdmin } from './admin';
-import { adminCache, getAdminCacheKey } from './cache';
+import { invalidateAdminCache } from './cache';
 
 /**
- * Verify caller is an admin. Uses short-lived in-memory cache to avoid repeated Firestore reads.
+ * Verify caller is a platform or super admin. Always re-reads Firestore
+ * (no positive TTL cache) so demotion takes effect immediately.
  */
 export async function verifyAdmin(context: functions.https.CallableContext): Promise<void> {
     ensureAdmin();
@@ -13,13 +14,8 @@ export async function verifyAdmin(context: functions.https.CallableContext): Pro
             'Must be authenticated'
         );
     }
-    const uid = context.auth.uid;
-    const cacheKey = getAdminCacheKey(uid);
-    if (adminCache.get(cacheKey)) {
-        return;
-    }
     const adminDoc = await getAdmin().firestore()
-        .doc(`admins/${uid}`)
+        .doc(`admins/${context.auth.uid}`)
         .get();
     if (!adminDoc.exists) {
         throw new functions.https.HttpsError(
@@ -27,7 +23,13 @@ export async function verifyAdmin(context: functions.https.CallableContext): Pro
             'Admin access required'
         );
     }
-    adminCache.set(cacheKey, true);
+    const role = String(adminDoc.data()?.role || 'platform');
+    if (role !== 'super' && role !== 'platform') {
+        throw new functions.https.HttpsError(
+            'permission-denied',
+            'Invalid admin role'
+        );
+    }
 }
 
 export type AdminRole = 'super' | 'platform';
@@ -73,4 +75,9 @@ export async function verifyPlatformOrManager(
     }
 
     throw new functions.https.HttpsError('permission-denied', 'Activity access required');
+}
+
+/** Best-effort per-instance cache clear after admin membership changes. */
+export function clearAdminAuthCache(uid: string): void {
+    invalidateAdminCache(uid);
 }

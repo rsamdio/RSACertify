@@ -1,4 +1,5 @@
 import { getCatalogActivities } from "@/lib/server-data";
+import { descriptionToPlainText } from "@/lib/rich-text";
 
 export const revalidate = 300;
 
@@ -19,11 +20,11 @@ export async function GET() {
     "2. Enter the email or redeem code your organizers shared.",
     "3. Download your PDF certificate if a match is found.",
     "",
-    "Lookup requires an exact match. Participant lists are never public.",
+    "Lookup requires an exact match. Recipient lists are never public.",
     "",
     "## Privacy boundary",
     "",
-    "- Do not index or cite individual participant names, emails, or redeem codes.",
+    "- Do not index or cite individual recipient names, emails, or redeem codes.",
     "- Public content is limited to activity titles, descriptions, and download instructions.",
     "",
     "## Public routes",
@@ -44,7 +45,7 @@ export async function GET() {
   } else {
     for (const activity of activities) {
       lines.push(
-        `- [${activity.title}](https://certify.rsamdio.org/${activity.slug}/) — ${activity.description || "Certificate download"}`
+        `- [${activity.title}](https://certify.rsamdio.org/${activity.slug}/) — ${descriptionToPlainText(activity.description) || "Certificate download"}`
       );
     }
   }

@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 import { getActivityBySlug } from "@/lib/server-data";
 import { BrandMasthead } from "@/components/BrandMasthead";
 import { JsonLd } from "@/components/JsonLd";
+import { RichDescription } from "@/components/RichDescription";
 import { SoftScrollLink } from "@/components/SoftScroll";
+import { descriptionToPlainText } from "@/lib/rich-text";
+import { formatActivityTrust } from "@/lib/trust-counts";
 import { DEFAULT_OG_IMAGE, DEFAULT_SEO_KEYWORDS, SITE_URL } from "@/lib/site-seo";
 import { ActivityClient } from "./ActivityClient";
 import { ActivityOpenTracker } from "./ActivityOpenTracker";
@@ -31,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!activity) return { title: "Activity not found" };
   const title = activity.title;
   const description =
-    activity.description ||
+    descriptionToPlainText(activity.description) ||
     `Download your verified certificate for ${activity.title} from Rotaract Certify.`;
   const ogImage = DEFAULT_OG_IMAGE;
   const keywords =
@@ -65,6 +68,11 @@ export default async function ActivityPage({ params }: Props) {
   }
 
   const pageUrl = `https://certify.rsamdio.org/${activity.slug}/`;
+  const plainDescription = descriptionToPlainText(activity.description);
+  const trustLine = formatActivityTrust(
+    activity.participantsCount,
+    activity.certificatesCount
+  );
   const jsonLd = [
     {
       "@context": "https://schema.org",
@@ -88,7 +96,7 @@ export default async function ActivityPage({ params }: Props) {
       "@context": "https://schema.org",
       "@type": activity.date ? "Event" : "CreativeWork",
       name: activity.title,
-      description: activity.description,
+      description: plainDescription,
       url: pageUrl,
       ...(activity.date
         ? {
@@ -130,9 +138,12 @@ export default async function ActivityPage({ params }: Props) {
           <span className={`quiet-status${activity.status === "closed" ? " is-closed" : ""}`}>
             {activity.status === "active" ? "Available now" : "No longer available"}
           </span>
+          {trustLine ? <span className="activity-trust-meta">{trustLine}</span> : null}
         </div>
         <h1 className="activity-hero-title">{activity.title}</h1>
-        {activity.description ? <p className="activity-hero-lead">{activity.description}</p> : null}
+        {activity.description ? (
+          <RichDescription html={activity.description} className="activity-hero-lead" />
+        ) : null}
       </section>
 
       <ActivityClient activity={activity} />

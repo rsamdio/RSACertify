@@ -570,6 +570,16 @@ textarea {
   color: var(--muted);
 }
 
+.activity-trust-meta {
+  color: var(--muted);
+}
+
+.activity-trust-meta::before {
+  content: "·";
+  margin-right: 0.75rem;
+  opacity: 0.55;
+}
+
 .activity-hero-title {
   margin: 0;
   font-family: var(--font-display);
@@ -585,8 +595,39 @@ textarea {
   color: var(--muted);
   font-size: 0.95rem;
   line-height: 1.4;
-  max-width: 36rem;
-  white-space: pre-line;
+  max-width: none;
+  width: 100%;
+}
+
+.activity-hero-lead.rich-description,
+.rich-description.activity-hero-lead {
+  white-space: normal;
+}
+
+.rich-description p {
+  margin: 0 0 0.65em;
+}
+
+.rich-description p:last-child {
+  margin-bottom: 0;
+}
+
+.rich-description ul,
+.rich-description ol {
+  margin: 0.35em 0 0.65em;
+  padding-left: 1.25rem;
+}
+
+.rich-description li {
+  margin: 0.15em 0;
+}
+
+.rich-description .desc-size-lg {
+  font-size: 1.15em;
+}
+
+.rich-description .desc-size-xl {
+  font-size: 1.35em;
 }
 
 .lookup-title,
@@ -1536,6 +1577,19 @@ textarea {
   gap: 1.25rem;
 }
 
+.import-csv-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.import-csv-actions .btn {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
 .import-label {
   font-size: 0.92rem;
   color: var(--cranberry-deep);
@@ -1680,6 +1734,10 @@ textarea {
 
 @media (max-width: 860px) {
   .import-split {
+    grid-template-columns: 1fr;
+  }
+
+  .import-csv-actions {
     grid-template-columns: 1fr;
   }
 }
@@ -1973,6 +2031,110 @@ textarea {
 
 .admin-collapse {
   padding: 1.1rem 1.35rem;
+}
+
+.description-editor {
+  display: grid;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.description-editor.is-loading {
+  min-height: 12rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: #fff;
+}
+
+.description-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--blush-2);
+}
+
+.description-editor-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.description-editor-btn:hover:not(:disabled):not(.is-active) {
+  color: var(--cranberry-deep);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.description-editor-btn.is-active {
+  background: var(--cranberry);
+  color: #fff;
+}
+
+.description-editor-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.description-editor-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 0.15rem 0.2rem;
+  background: var(--line);
+}
+
+.description-editor-surface {
+  min-height: 12rem;
+  max-height: 28rem;
+  overflow: auto;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: #fff;
+  font: inherit;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.description-editor-surface:focus {
+  outline: none;
+  border-color: rgba(217, 27, 92, 0.55);
+  box-shadow: 0 0 0 3px rgba(217, 27, 92, 0.12);
+}
+
+.description-editor-surface p {
+  margin: 0 0 0.65em;
+}
+
+.description-editor-surface p:last-child {
+  margin-bottom: 0;
+}
+
+.description-editor-surface ul,
+.description-editor-surface ol {
+  margin: 0.35em 0 0.65em;
+  padding-left: 1.25rem;
+}
+
+.description-editor-surface .desc-size-lg {
+  font-size: 1.15em;
+}
+
+.description-editor-surface .desc-size-xl {
+  font-size: 1.35em;
+}
+
+.description-editor .tiptap {
+  outline: none;
 }
 
 .admin-collapse > summary {

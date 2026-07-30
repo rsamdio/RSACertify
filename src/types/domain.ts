@@ -2,7 +2,7 @@ export type ActivityStatus = "draft" | "active" | "closed";
 
 export type Role = "super" | "platform" | "manager";
 
-/** Shared field schema (People tab). Placement styles live per design. */
+/** Shared field schema (Recipients tab). Placement styles live per design. */
 export type ParticipantFieldSchema = {
   key: string;
   label: string;

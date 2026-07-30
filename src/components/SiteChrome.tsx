@@ -90,7 +90,7 @@ export function SiteFooter() {
             <Link href="/admin">Organizer sign-in</Link>
           </p>
           <p>
-            <Link href="/playbook">Playbook: create → publish</Link>
+            <Link href="/playbook">Playbook: Create → Publish</Link>
           </p>
           <p>Issue certificates for your Rotaract programs and events.</p>
         </div>

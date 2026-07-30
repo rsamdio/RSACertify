@@ -5,7 +5,7 @@ import { BrandMasthead } from "@/components/BrandMasthead";
 export const metadata: Metadata = {
   title: "Organizer playbook",
   description:
-    "How to create activities, upload certificate designs, place fields, import people, and publish with Rotaract Certify by Rotaract South Asia MDIO.",
+    "How to create activities, upload certificate designs, place fields, import recipients, and publish with Rotaract Certify by Rotaract South Asia MDIO.",
   openGraph: {
     title: "Organizer playbook | Rotaract Certify | Rotaract South Asia MDIO"
   }
@@ -21,8 +21,8 @@ const STEPS = [
     body: "Add one or more PNG certificate designs (for example gold, silver, bronze). Give each design a short key. Keep the longest edge at or under 3000px so downloads stay reliable on phones."
   },
   {
-    title: "Add people and certificate fields",
-    body: "Define which columns appear on certificates, then import a CSV or Google Sheet, or add people one by one. Every person needs a unique lookup (email or redeem code). Assign a design key when you use more than one artwork."
+    title: "Add recipients and certificate fields",
+    body: "Define which columns appear on certificates, then import a CSV or Google Sheet, or add recipients one by one. Every recipient needs a unique lookup (email or redeem code). Assign a design key when you use more than one artwork."
   },
   {
     title: "Place text on each design",
@@ -34,7 +34,7 @@ const STEPS = [
   },
   {
     title: "Support your members",
-    body: "If someone’s email or code is not found, check the people list first. Escalation: organizers → rsamdio@gmail.com → ZeoSpec for platform issues."
+    body: "If someone’s email or code is not found, check the recipient list first. Escalation: organizers → rsamdio@gmail.com → ZeoSpec for platform issues."
   }
 ] as const;
 
@@ -55,7 +55,7 @@ export default function PlaybookPage() {
         </div>
         <h1 className="activity-hero-title">Organizer playbook</h1>
         <p className="activity-hero-lead">
-          Follow this order in the admin workspace: Details → Design → People → Placement →
+          Follow this order in the admin workspace: Details → Design → Recipients → Placement →
           Managers.
         </p>
       </section>

@@ -40,7 +40,7 @@ export default function PrivacyPage() {
           <a href="https://certify.rsamdio.org">https://certify.rsamdio.org</a> (the “Service”).
         </p>
         <p>
-          Rotaract Certify helps Rotaract organizers create activities, manage participant records,
+          Rotaract Certify helps Rotaract organizers create activities, manage recipient records,
           and make digital certificates available for download. ZeoSpec develops and supports the
           platform for RSAMDIO.
         </p>
@@ -54,12 +54,12 @@ export default function PrivacyPage() {
         <h2>2. Who is responsible for information</h2>
         <p>
           RSAMDIO operates the Service. For a particular activity, the organizer that decides which
-          participant information to collect, why to collect it, and how to use it will generally be
-          responsible for that activity’s participant information. RSAMDIO and ZeoSpec may process
+          recipient information to collect, why to collect it, and how to use it will generally be
+          responsible for that activity’s recipient information. RSAMDIO and ZeoSpec may process
           that information to operate, secure, support, and improve the Service.
         </p>
         <p>
-          Organizers must ensure they have the authority required to upload and use participant
+          Organizers must ensure they have the authority required to upload and use recipient
           information.
         </p>
 
@@ -77,7 +77,7 @@ export default function PrivacyPage() {
           </li>
           <li>the email address, redeem code, or other lookup value you submit to find a certificate</li>
           <li>
-            certificate data returned for a successful lookup, including participant name, lookup
+            certificate data returned for a successful lookup, including recipient name, lookup
             value, certificate status, download status, and activity-specific certificate fields
           </li>
           <li>information relating to download attempts and when a certificate is marked downloaded</li>
@@ -96,16 +96,16 @@ export default function PrivacyPage() {
           </li>
           <li>your role and access scope (platform administrator or activity manager)</li>
           <li>
-            activity details, certificate designs, placement settings, field schemas, participant
+            activity details, certificate designs, placement settings, field schemas, recipient
             records, imports, exports, and manager invitations
           </li>
           <li>support communications and operational records</li>
           <li>actions taken in the organizer workspace where needed for security or administration</li>
         </ul>
 
-        <h3>3.3 Participant information uploaded by organizers</h3>
+        <h3>3.3 Recipient information uploaded by organizers</h3>
         <p>
-          Organizers may upload participant information such as names, email addresses, redeem codes,
+          Organizers may upload recipient information such as names, email addresses, redeem codes,
           selected certificate design, certificate status, and custom fields configured for an
           activity. Custom fields are chosen by organizers and may appear on a certificate or be
           retained only as an activity record.
@@ -133,13 +133,13 @@ export default function PrivacyPage() {
 
         <h2>5. Certificate lookup, security, and access limits</h2>
         <p>
-          Public visitors can browse activity information, but participant lists are not publicly
+          Public visitors can browse activity information, but recipient lists are not publicly
           browseable.
         </p>
         <p>
           To retrieve a certificate, you submit an activity-specific lookup value (such as an email
           address or redeem code). The lookup is handled by a secure backend check (
-          <code>verifyCertificate</code>) rather than by public access to participant records. A
+          <code>verifyCertificate</code>) rather than by public access to recipient records. A
           successful match returns the minimum certificate data needed to display one certificate.
         </p>
         <p className="legal-callout">
@@ -195,7 +195,7 @@ export default function PrivacyPage() {
           If Firebase Analytics is configured for the Service, it may collect information about use
           of the public catalog and activity pages, including events such as catalog views, activity
           opens, certificate lookup outcomes, and download outcomes. These events are intended to
-          measure Service use and reliability. Organizers should not place participant names, email
+          measure Service use and reliability. Organizers should not place recipient names, email
           addresses, redeem codes, or other personal information into analytics fields.
         </p>
         <p>
@@ -232,7 +232,7 @@ export default function PrivacyPage() {
         </p>
         <ul>
           <li>
-            Activity and participant records may be retained while an activity remains available and
+            Activity and recipient records may be retained while an activity remains available and
             afterward where historical certificate records are needed
           </li>
           <li>
@@ -259,7 +259,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           For information in a specific activity, contact that activity’s organizer first. They are
-          best placed to correct participant details or update a certificate record. You may also
+          best placed to correct recipient details or update a certificate record. You may also
           contact RSAMDIO or ZeoSpec using the details below.
         </p>
         <p>
@@ -279,7 +279,7 @@ export default function PrivacyPage() {
         <h2>12. Children and young people</h2>
         <p>
           The Service is not designed for children to use independently. Activities may involve young
-          people, and organizers are responsible for ensuring that collection and use of participant
+          people, and organizers are responsible for ensuring that collection and use of recipient
           information complies with applicable age, consent, safeguarding, and parental-authority
           requirements.
         </p>
@@ -339,7 +339,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Organizer responsibility:</strong> organizers should have a lawful basis before
-            uploading people’s details
+            uploading recipient details
           </li>
           <li>
             <strong>Data minimization:</strong> only include details needed for the certificate or
@@ -353,7 +353,7 @@ export default function PrivacyPage() {
             <strong>Download status:</strong> may be recorded to understand issuance and support
           </li>
           <li>
-            <strong>Organizer access:</strong> only authorized organizers manage participant lists
+            <strong>Organizer access:</strong> only authorized organizers manage recipient lists
           </li>
         </ul>
 

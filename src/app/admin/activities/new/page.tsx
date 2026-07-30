@@ -1,12 +1,17 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { createActivityDefaults, slugify } from "@/lib/activity-defaults";
 import { getFirebaseServices } from "@/lib/firebase-client";
 import { DateField } from "@/components/admin/DateField";
+import { DescriptionEditor } from "@/components/admin/DescriptionEditor";
+import {
+  isDescriptionEmpty,
+  sanitizeDescriptionHtml
+} from "@/lib/rich-text";
 
 export default function NewActivityPage() {
   return <NewActivityForm />;
@@ -21,6 +26,20 @@ function NewActivityForm() {
   const [date, setDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [allowed, setAllowed] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { auth } = getFirebaseServices();
+      const token = await auth.currentUser?.getIdTokenResult(true);
+      const role = String(token?.claims.role || "");
+      if (role !== "super" && role !== "platform") {
+        router.replace("/admin/activities");
+        return;
+      }
+      setAllowed(true);
+    })().catch(() => router.replace("/admin/activities"));
+  }, [router]);
 
   function onTitleChange(value: string) {
     setTitle(value);
@@ -37,6 +56,10 @@ function NewActivityForm() {
         setError("Slug is required.");
         return;
       }
+      if (isDescriptionEmpty(description)) {
+        setError("Description is required.");
+        return;
+      }
       const { db } = getFirebaseServices();
       const ref = doc(db, "activities", normalized);
       const existing = await getDoc(ref);
@@ -47,7 +70,7 @@ function NewActivityForm() {
       const payload = createActivityDefaults({
         slug: normalized,
         title: title.trim(),
-        description: description.trim(),
+        description: sanitizeDescriptionHtml(description),
         date: date || undefined
       });
       await setDoc(ref, {
@@ -58,29 +81,39 @@ function NewActivityForm() {
       router.push(`/admin/activities/${normalized}?tab=templates`);
     } catch (err) {
       console.error(err);
-      setError("Unable to create activity. Check permissions and try again.");
+      setError("Could not create activity. Please try again.");
     } finally {
       setSaving(false);
     }
   }
 
+  if (!allowed) {
+    return <section className="admin-page stack">Checking access…</section>;
+  }
+
   return (
-    <section className="admin-page" style={{ maxWidth: 720 }}>
+    <section className="admin-page stack">
       <p className="activity-back">
-        <Link href="/admin/activities">← Activities</Link>
+        <Link href="/admin/activities" prefetch>
+          ← Activities
+        </Link>
       </p>
-      <div className="card admin-panel stack">
+      <div className="admin-page-head">
         <div>
-          <h1 style={{ margin: 0 }}>Create activity</h1>
-          <p className="meta">
-            Starts as a draft. Next you&rsquo;ll upload certificate designs, add people (and assign a design
-            per person if needed), then place text on the artwork.
-          </p>
+          <h1>New activity</h1>
+          <p className="meta">Create the details, then upload a certificate design.</p>
         </div>
+      </div>
+      <div className="card admin-panel">
         <form className="form-grid" onSubmit={onSubmit}>
           <div className="field">
             <label htmlFor="title">Title</label>
-            <input id="title" value={title} onChange={(e) => onTitleChange(e.target.value)} required />
+            <input
+              id="title"
+              value={title}
+              onChange={(e) => onTitleChange(e.target.value)}
+              required
+            />
           </div>
           <div className="field">
             <label htmlFor="slug">Web address (slug)</label>
@@ -89,7 +122,7 @@ function NewActivityForm() {
               value={slug}
               onChange={(e) => {
                 setSlugManual(true);
-                setSlug(slugify(e.target.value));
+                setSlug(e.target.value);
               }}
               required
             />
@@ -97,13 +130,12 @@ function NewActivityForm() {
               Public page: <code>/{slugify(slug) || "…"}</code> · Must be unique.
             </p>
           </div>
-          <div className="field">
+          <div className="field" style={{ gridColumn: "1 / -1" }}>
             <label htmlFor="description">Description</label>
-            <textarea
+            <DescriptionEditor
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              required
+              onChange={setDescription}
             />
           </div>
           <div className="field">

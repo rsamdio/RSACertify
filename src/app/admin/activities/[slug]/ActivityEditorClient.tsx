@@ -48,7 +48,10 @@ import {
   bulkUploadParticipants,
   getTemplateUploadUrl,
   inviteActivityManager,
+  listActivityInvites,
+  PendingInvite,
   removeActivityManager,
+  revokeInvite,
   syncAdminClaims
 } from "@/lib/callables";
 import {
@@ -64,6 +67,11 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { CertificateFontsLink } from "@/components/CertificateFontsLink";
 import { DateField } from "@/components/admin/DateField";
 import { AdminSelect } from "@/components/admin/AdminSelect";
+import { DescriptionEditor } from "@/components/admin/DescriptionEditor";
+import {
+  isDescriptionEmpty,
+  sanitizeDescriptionHtml
+} from "@/lib/rich-text";
 
 type TabKey = "details" | "participants" | "templates" | "layout" | "managers";
 type ImportMode = "source" | "pickSheet" | "review";
@@ -71,7 +79,7 @@ type ImportMode = "source" | "pickSheet" | "review";
 const TABS: Array<[TabKey, string]> = [
   ["details", "Details"],
   ["templates", "Design"],
-  ["participants", "People"],
+  ["participants", "Recipients"],
   ["layout", "Placement"],
   ["managers", "Managers"]
 ];
@@ -83,6 +91,13 @@ type Props = {
 type ParticipantRow = Participant & { additionalFields?: Record<string, string> };
 
 type ManagerRow = { uid: string; email?: string };
+
+function formatInviteExpiry(expiresAt?: number) {
+  if (!expiresAt) return "—";
+  const d = new Date(expiresAt);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
 
 function isTabKey(value: string | null): value is TabKey {
   return Boolean(value && TABS.some(([key]) => key === value));
@@ -155,7 +170,7 @@ function percentFromInput(raw: string): string | null {
 }
 
 function defaultSampleForField(field: ParticipantField): string {
-  if (field.key === "name") return "Sample Participant";
+  if (field.key === "name") return "Sample Recipient";
   if (field.key === "lookup") return "sample@example.com";
   return field.label || field.key;
 }
@@ -252,6 +267,7 @@ export function ActivityEditorClient({ slug }: Props) {
   const [editFields, setEditFields] = useState<Record<string, string>>({});
 
   const [managers, setManagers] = useState<ManagerRow[]>([]);
+  const [pendingManagerInvites, setPendingManagerInvites] = useState<PendingInvite[]>([]);
   const [managerEmail, setManagerEmail] = useState("");
 
   const [confirmState, setConfirmState] = useState<null | {
@@ -411,7 +427,7 @@ export function ActivityEditorClient({ slug }: Props) {
       } catch (err) {
         console.error(err);
         if (!cancelled) {
-          setError("Unable to load people. Please switch tabs and try again.");
+          setError("Unable to load recipients. Please switch tabs and try again.");
           setParticipants([]);
           setPeopleLoaded(true);
         }
@@ -420,7 +436,7 @@ export function ActivityEditorClient({ slug }: Props) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when entering People for this slug
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when entering Recipients for this slug
   }, [slug, tab]);
 
   useEffect(() => {
@@ -428,8 +444,23 @@ export function ActivityEditorClient({ slug }: Props) {
       const { db } = getFirebaseServices();
       const snap = await getDocs(collection(db, "activities", slug, "managers"));
       setManagers(snap.docs.map((d) => ({ uid: d.id, email: d.data().email })));
+      try {
+        const result = await listActivityInvites(slug);
+        setPendingManagerInvites(result.invites || []);
+      } catch {
+        setPendingManagerInvites([]);
+      }
     })().catch(console.error);
   }, [slug]);
+
+  async function refreshPendingManagerInvites() {
+    try {
+      const result = await listActivityInvites(slug);
+      setPendingManagerInvites(result.invites || []);
+    } catch {
+      setPendingManagerInvites([]);
+    }
+  }
 
   const filteredParticipants = useMemo(() => {
     const q = participantQuery.trim().toLowerCase();
@@ -575,8 +606,10 @@ export function ActivityEditorClient({ slug }: Props) {
           ([key, value]) => key !== "ogImage" && value !== undefined && value !== ""
         )
       );
+      const description = sanitizeDescriptionHtml(String(next.description || ""));
       const payload: Record<string, unknown> = {
         ...rest,
+        description,
         updatedAt: serverTimestamp(),
         seo: Object.keys(seoRest).length ? seoRest : { keywords: DEFAULT_SEO_KEYWORDS }
       };
@@ -595,6 +628,7 @@ export function ActivityEditorClient({ slug }: Props) {
       const savedSeo = (payload.seo || { keywords: DEFAULT_SEO_KEYWORDS }) as Activity["seo"];
       setActivity({
         ...next,
+        description,
         seo: savedSeo
       });
       flashOk(okMessage);
@@ -675,6 +709,10 @@ export function ActivityEditorClient({ slug }: Props) {
   async function onSaveDetails(e: FormEvent) {
     e.preventDefault();
     if (!activity) return;
+    if (isDescriptionEmpty(activity.description)) {
+      setError("Description is required.");
+      return;
+    }
     const publishing = activity.status === "active";
     // Slug renames are intentional and go through requestSlugUpdate — never via Save details.
     const ok = await saveActivity({ ...activity, slug }, "Details saved.");
@@ -708,7 +746,7 @@ export function ActivityEditorClient({ slug }: Props) {
 
     askConfirm({
       title: "Change web address?",
-      body: `You are about to rename “/${slug}” to “/${nextSlug}”. Anyone with the old link will no longer reach this activity. People, managers, and designs will move with it.`,
+      body: `You are about to rename “/${slug}” to “/${nextSlug}”. Anyone with the old link will no longer reach this activity. Recipients, managers, and designs will move with it.`,
       confirmLabel: "Continue",
       danger: true,
       followUp: {
@@ -792,7 +830,7 @@ export function ActivityEditorClient({ slug }: Props) {
     if (!activity || !canDelete) return;
     askConfirm({
       title: "Delete this activity?",
-      body: `Permanently delete “${activity.title}” along with its people list and managers. This cannot be undone.`,
+      body: `Permanently delete “${activity.title}” along with its recipient list and managers. This cannot be undone.`,
       confirmLabel: "Delete activity",
       danger: true,
       action: async () => {
@@ -909,7 +947,7 @@ export function ActivityEditorClient({ slug }: Props) {
     if (activity.templates[key]) {
       askConfirm({
         title: "Replace this design?",
-        body: `A design with key “${key}” already exists. Uploading will replace its image. People assigned to “${key}” keep that assignment.`,
+        body: `A design with key “${key}” already exists. Uploading will replace its image. Recipients assigned to “${key}” keep that assignment.`,
         confirmLabel: "Replace image",
         danger: true,
         action: async () => {
@@ -1048,7 +1086,7 @@ export function ActivityEditorClient({ slug }: Props) {
       body:
         keys.length === 1
           ? `Delete “${key}”? This is the only design on this activity. Placement will need a new upload afterward.`
-          : `Delete design key “${key}”? People still assigned to it will fall back to the activity default.`,
+          : `Delete design key “${key}”? Recipients still assigned to it will fall back to the activity default.`,
       confirmLabel: "Delete design",
       danger: true,
       action: async () => {
@@ -1257,7 +1295,7 @@ export function ActivityEditorClient({ slug }: Props) {
     }
     askConfirm({
       title: "Remove this field?",
-      body: `Remove “${field?.label || field?.key || "this field"}” from the activity? People data already collected for this column will no longer show in the form, and it won’t appear on certificates. Save fields afterward to keep the change.`,
+      body: `Remove “${field?.label || field?.key || "this field"}” from the activity? Recipient data already collected for this column will no longer show in the form, and it won’t appear on certificates. Save fields afterward to keep the change.`,
       confirmLabel: "Remove field",
       danger: true,
       action: () => {
@@ -1348,7 +1386,7 @@ export function ActivityEditorClient({ slug }: Props) {
       flashOk("Person added.");
     } catch (err) {
       console.error(err);
-      setError("Unable to add this person.");
+      setError("Unable to add this recipient.");
     } finally {
       setAddingPerson(false);
     }
@@ -1427,7 +1465,7 @@ export function ActivityEditorClient({ slug }: Props) {
       flashOk("Person updated.");
     } catch (err) {
       console.error(err);
-      setError("Unable to update this person.");
+      setError("Unable to update this recipient.");
     } finally {
       setAddingPerson(false);
     }
@@ -1436,11 +1474,11 @@ export function ActivityEditorClient({ slug }: Props) {
   async function deleteParticipant(id: string) {
     const row = participants.find((p) => p.id === id);
     askConfirm({
-      title: "Remove this person?",
+      title: "Remove this recipient?",
       body: row
-        ? `Remove ${row.name || "this person"} (${row.lookup || "no lookup"}) from the people list? This cannot be undone.`
-        : "Remove this person from the people list? This cannot be undone.",
-      confirmLabel: "Remove person",
+        ? `Remove ${row.name || "this recipient"} (${row.lookup || "no lookup"}) from the recipient list? This cannot be undone.`
+        : "Remove this recipient from the recipient list? This cannot be undone.",
+      confirmLabel: "Remove recipient",
       danger: true,
       action: async () => {
         const { db } = getFirebaseServices();
@@ -1484,10 +1522,10 @@ export function ActivityEditorClient({ slug }: Props) {
         processed += Number(result.processed || chunk.length);
         skipped += Number(result.skipped || 0);
       }
-      // Refresh people via HTTPS REST (same path as tab open) — no RTDB WebSocket listener.
+      // Refresh recipients via HTTPS REST (same path as tab open) — no RTDB WebSocket listener.
       await reloadParticipants().catch(console.error);
       flashOk(
-        `Imported ${processed} people.${skipped ? ` ${skipped} already existed and were skipped.` : ""}`
+        `Imported ${processed} recipients.${skipped ? ` ${skipped} already existed and were skipped.` : ""}`
       );
       resetImportSourceUi();
     } catch (err: unknown) {
@@ -1514,7 +1552,7 @@ export function ActivityEditorClient({ slug }: Props) {
         existingLookups: existingLookupSet(participants),
         designKeys: designKeySet
       });
-      if (!rows.length) throw new Error("Your file needs a header row and at least one person");
+      if (!rows.length) throw new Error("Your file needs a header row and at least one recipient");
       enterImportReview(
         rows.map(({ issues: _i, ok: _o, ...draft }) => draft),
         file.name
@@ -1546,7 +1584,7 @@ export function ActivityEditorClient({ slug }: Props) {
       existingLookups: existingLookupSet(participants),
       designKeys: designKeySet
     });
-    if (!rows.length) throw new Error("That sheet needs a header row and at least one person");
+    if (!rows.length) throw new Error("That sheet needs a header row and at least one recipient");
     enterImportReview(
       rows.map(({ issues: _i, ok: _o, ...draft }) => draft),
       "Google Sheet"
@@ -1645,7 +1683,7 @@ export function ActivityEditorClient({ slug }: Props) {
       ];
       rows.push(values.map(csvEscape).join(","));
     }
-    downloadCsv(`${slug}-participants.csv`, rows);
+    downloadCsv(`${slug}-recipients.csv`, rows);
   }
 
   function downloadTemplateCsv() {
@@ -1667,6 +1705,7 @@ export function ActivityEditorClient({ slug }: Props) {
     try {
       await inviteActivityManager(managerEmail.trim().toLowerCase(), slug);
       setManagerEmail("");
+      await refreshPendingManagerInvites();
       flashOk(
         "Manager invite created. Ask them to sign in at /admin with that Google account and accept."
       );
@@ -1676,6 +1715,20 @@ export function ActivityEditorClient({ slug }: Props) {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function onRevokeManagerInvite(inviteId: string) {
+    askConfirm({
+      title: "Cancel this pending invite?",
+      body: "They will no longer be able to accept this manager invite.",
+      confirmLabel: "Cancel invite",
+      danger: true,
+      action: async () => {
+        await revokeInvite(inviteId);
+        await refreshPendingManagerInvites();
+        flashOk("Pending invite cancelled.");
+      }
+    });
   }
 
   async function onRemoveManager(uid: string) {
@@ -1712,7 +1765,7 @@ export function ActivityEditorClient({ slug }: Props) {
         templateUrl,
         participant: {
           id: "preview",
-          name: previewSamples.name ?? "Sample Participant",
+          name: previewSamples.name ?? "Sample Recipient",
           lookup: previewSamples.lookup ?? "sample@example.com",
           additionalFields: sampleAdditional
         },
@@ -1745,7 +1798,7 @@ export function ActivityEditorClient({ slug }: Props) {
           <h1>{activity.title}</h1>
           <p className="meta">
             /{activity.slug} · <span className={`badge badge-${activity.status}`}>{activity.status}</span>
-            {` · ${peopleCount} ${peopleCount === 1 ? "person" : "people"}`}
+            {` · ${peopleCount} ${peopleCount === 1 ? "recipient" : "recipients"}`}
             {` · ${downloadedCount} downloaded (${downloadPercent}%)`}
           </p>
         </div>
@@ -1877,13 +1930,12 @@ export function ActivityEditorClient({ slug }: Props) {
                 </>
               )}
             </div>
-            <div className="field">
+            <div className="field" style={{ gridColumn: "1 / -1" }}>
               <label htmlFor="description">Description</label>
-              <textarea
+              <DescriptionEditor
                 id="description"
                 value={activity.description}
-                onChange={(e) => setActivity({ ...activity, description: e.target.value })}
-                required
+                onChange={(html) => setActivity({ ...activity, description: html })}
               />
             </div>
             <div className="form-grid two">
@@ -1952,12 +2004,12 @@ export function ActivityEditorClient({ slug }: Props) {
             <div className="card admin-panel stack" role="dialog" aria-label="Share activity">
               <h3 style={{ margin: 0 }}>Activity is live</h3>
               <p className="meta">
-                Share this link so people can download certificates.
+                Share this link so recipients can download certificates.
                 {!Object.keys(activity.templates || {}).length
                   ? " Tip: upload a design first for best results."
                   : ""}
                 {participants.length === 0
-                  ? " Tip: add people before announcing widely."
+                  ? " Tip: add recipients before announcing widely."
                   : ""}
               </p>
               <div className="row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
@@ -2004,7 +2056,7 @@ export function ActivityEditorClient({ slug }: Props) {
               <div>
                 <h3 style={{ margin: 0 }}>Danger zone</h3>
                 <p className="meta">
-                  Permanently delete this activity along with its people list and managers. This cannot be undone.
+                  Permanently delete this activity along with its recipient list and managers. This cannot be undone.
                 </p>
               </div>
               <div className="row">
@@ -2092,7 +2144,7 @@ export function ActivityEditorClient({ slug }: Props) {
           <details className="card admin-panel admin-collapse" open={importMode !== "source"}>
             <summary>
               <div>
-                <h3>Import people</h3>
+                <h3>Import recipients</h3>
                 <p className="meta">
                   {importMode === "review"
                     ? "Review rows before importing. Fix or remove any red rows."
@@ -2123,10 +2175,10 @@ export function ActivityEditorClient({ slug }: Props) {
                       </span>
                     </label>
                     <p className="meta" style={{ margin: 0 }}>
-                      <code>lookup</code> is what people enter to search for their certificate,{" "}
+                      <code>lookup</code> is what recipients enter to search for their certificate,{" "}
                       <code>design</code> is the design key (leave blank to use the activity default).
                     </p>
-                    <div className="row">
+                    <div className="import-csv-actions">
                       <button className="btn btn-secondary" type="button" onClick={downloadTemplateCsv}>
                         Download CSV sample
                       </button>
@@ -2331,8 +2383,8 @@ export function ActivityEditorClient({ slug }: Props) {
           <details className="card admin-panel admin-collapse" open>
             <summary>
               <div>
-                <h3>Add person</h3>
-                <p className="meta">Add someone manually, one at a time.</p>
+                <h3>Add recipient</h3>
+                <p className="meta">Add a recipient manually, one at a time.</p>
               </div>
             </summary>
             <form className="admin-collapse-body form-grid two" onSubmit={addParticipant}>
@@ -2361,7 +2413,7 @@ export function ActivityEditorClient({ slug }: Props) {
                   />
                 ) : (
                   <p className="meta" style={{ margin: 0 }}>
-                    Upload a design first — this person will use the activity default once designs exist.
+                    Upload a design first — this recipient will use the activity default once designs exist.
                   </p>
                 )}
               </div>
@@ -2379,18 +2431,28 @@ export function ActivityEditorClient({ slug }: Props) {
               ))}
               <div className="row" style={{ gridColumn: "1 / -1" }}>
                 <button className="btn" type="submit" disabled={addingPerson}>
-                  {addingPerson ? "Adding…" : "Add person"}
+                  {addingPerson ? "Adding…" : "Add recipient"}
                 </button>
               </div>
             </form>
           </details>
 
           <div className="card admin-panel stack">
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <h3 style={{ margin: 0 }}>People ({participants.length})</h3>
-              <button className="btn btn-secondary" type="button" onClick={() => setTab("layout")}>
-                Next: Placement →
-              </button>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: "0.75rem" }}>
+              <h3 style={{ margin: 0 }}>Recipients ({participants.length})</h3>
+              <div className="row" style={{ flexShrink: 0 }}>
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={exportCsv}
+                  disabled={!participants.length}
+                >
+                  Export
+                </button>
+                <button className="btn btn-secondary" type="button" onClick={() => setTab("layout")}>
+                  Next: Placement →
+                </button>
+              </div>
             </div>
             <input
               className="admin-search"
@@ -2399,8 +2461,8 @@ export function ActivityEditorClient({ slug }: Props) {
                 setParticipantQuery(e.target.value);
                 setPeoplePage(0);
               }}
-              placeholder="Search people…"
-              aria-label="Search people"
+              placeholder="Search recipients…"
+              aria-label="Search recipients"
             />
             <div className="table-wrap">
               <table className="data-table admin-compact-table">
@@ -2532,8 +2594,8 @@ export function ActivityEditorClient({ slug }: Props) {
               </table>
               {filteredParticipants.length === 0 ? (
                 <div className="empty-state">
-                  <h3>No people yet</h3>
-                  <p>Upload a CSV, import a Google Sheet, or add someone manually.</p>
+                  <h3>No recipients yet</h3>
+                  <p>Upload a CSV, import a Google Sheet, or add a recipient manually.</p>
                 </div>
               ) : null}
             </div>
@@ -2573,7 +2635,7 @@ export function ActivityEditorClient({ slug }: Props) {
           <form className="card admin-panel form-grid" onSubmit={onUploadTemplate}>
             <p className="meta" style={{ marginTop: 0 }}>
               Upload certificate designs (e.g. gold, silver, bronze). Each needs a unique design key —
-              used when assigning designs to people. Configure certificate fields on People, then place
+              used when assigning designs to recipients. Configure certificate fields on Recipients, then place
               them on each artwork under Placement.
             </p>
             <div className="form-grid two">
@@ -2621,7 +2683,7 @@ export function ActivityEditorClient({ slug }: Props) {
                 {saving ? "Uploading…" : "Upload design"}
               </button>
               <button className="btn btn-secondary" type="button" onClick={() => setTab("participants")}>
-                Next: People →
+                Next: Recipients →
               </button>
             </div>
           </form>
@@ -2789,10 +2851,10 @@ export function ActivityEditorClient({ slug }: Props) {
                   <h3 style={{ marginTop: 0 }}>Turn on a certificate field first</h3>
                   <p className="meta">
                     Placement needs at least one field with &ldquo;On certificate&rdquo; turned on. Set this up
-                    under People.
+                    under Recipients.
                   </p>
                   <button className="btn" type="button" onClick={() => setTab("participants")}>
-                    Go to People
+                    Go to Recipients
                   </button>
                 </div>
               ) : null}
@@ -3148,30 +3210,78 @@ export function ActivityEditorClient({ slug }: Props) {
 
       {tab === "managers" ? (
         <div className="stack">
-          <div className="card admin-panel stack">
-            <div>
-              <h3 style={{ margin: 0 }}>Activity managers</h3>
-              <p className="meta" style={{ margin: "0.35rem 0 0" }}>
-                Managers can help with this activity only. Platform-wide admins are invited from Team — not
-                here. No email is sent; they sign in with the invited Google account and accept.
+          {canDelete ? (
+            <div className="card admin-panel stack">
+              <div>
+                <h3 style={{ margin: 0 }}>Activity managers</h3>
+                <p className="meta" style={{ margin: "0.35rem 0 0" }}>
+                  Managers can help with this activity only. Platform-wide admins are invited from Team — not
+                  here. No email is sent; they sign in with the invited Google account and accept.
+                </p>
+              </div>
+              <form className="invite-inline" onSubmit={onInviteManager}>
+                <div className="field" style={{ flex: 1, minWidth: 0 }}>
+                  <label htmlFor="managerEmail">Google email</label>
+                  <input
+                    id="managerEmail"
+                    type="email"
+                    value={managerEmail}
+                    onChange={(e) => setManagerEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    required
+                  />
+                </div>
+                <button className="btn" type="submit" disabled={saving}>
+                  Create invite
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="card admin-panel">
+              <h3 style={{ marginTop: 0 }}>Activity managers</h3>
+              <p className="meta" style={{ marginBottom: 0 }}>
+                You can view who helps with this activity. Only platform admins can invite or remove
+                managers.
               </p>
             </div>
-            <form className="invite-inline" onSubmit={onInviteManager}>
-              <div className="field" style={{ flex: 1, minWidth: 0 }}>
-                <label htmlFor="managerEmail">Google email</label>
-                <input
-                  id="managerEmail"
-                  type="email"
-                  value={managerEmail}
-                  onChange={(e) => setManagerEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  required
-                />
+          )}
+          <div className="card admin-panel">
+            <h3 style={{ marginTop: 0 }}>Pending invites</h3>
+            {pendingManagerInvites.length === 0 ? (
+              <p className="meta">No pending manager invites.</p>
+            ) : (
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Email</th>
+                      <th>Expires</th>
+                      {canDelete ? <th /> : null}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingManagerInvites.map((invite) => (
+                      <tr key={invite.id}>
+                        <td>{invite.email}</td>
+                        <td>{formatInviteExpiry(invite.expiresAt)}</td>
+                        {canDelete ? (
+                          <td>
+                            <button
+                              className="btn btn-secondary btn-compact"
+                              type="button"
+                              disabled={saving}
+                              onClick={() => onRevokeManagerInvite(invite.id)}
+                            >
+                              Cancel
+                            </button>
+                          </td>
+                        ) : null}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <button className="btn" type="submit" disabled={saving}>
-                Create invite
-              </button>
-            </form>
+            )}
           </div>
           <div className="card admin-panel">
             <h3 style={{ marginTop: 0 }}>Current managers</h3>
@@ -3183,22 +3293,24 @@ export function ActivityEditorClient({ slug }: Props) {
                   <thead>
                     <tr>
                       <th>Email</th>
-                      <th />
+                      {canDelete ? <th /> : null}
                     </tr>
                   </thead>
                   <tbody>
                     {managers.map((manager) => (
                       <tr key={manager.uid}>
                         <td>{manager.email || manager.uid}</td>
-                        <td>
-                          <button
-                            className="btn btn-secondary btn-compact"
-                            type="button"
-                            onClick={() => onRemoveManager(manager.uid)}
-                          >
-                            Remove
-                          </button>
-                        </td>
+                        {canDelete ? (
+                          <td>
+                            <button
+                              className="btn btn-secondary btn-compact"
+                              type="button"
+                              onClick={() => onRemoveManager(manager.uid)}
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        ) : null}
                       </tr>
                     ))}
                   </tbody>

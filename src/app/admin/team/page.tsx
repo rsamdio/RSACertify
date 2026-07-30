@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import { getFirebaseServices } from "@/lib/firebase-client";
 import {
@@ -33,6 +34,7 @@ function formatExpiry(expiresAt?: number) {
 }
 
 export default function TeamPage() {
+  const router = useRouter();
   const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [pending, setPending] = useState<PendingInvite[]>([]);
   const [email, setEmail] = useState("");
@@ -40,6 +42,7 @@ export default function TeamPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [canInvite, setCanInvite] = useState(false);
+  const [allowed, setAllowed] = useState(false);
 
   async function refreshAdmins() {
     const { db } = getFirebaseServices();
@@ -64,12 +67,21 @@ export default function TeamPage() {
         // ignore
       }
       const { auth } = getFirebaseServices();
-      const token = await auth.currentUser?.getIdTokenResult();
+      const token = await auth.currentUser?.getIdTokenResult(true);
       const role = String(token?.claims.role || "");
+      if (role !== "super" && role !== "platform") {
+        router.replace("/admin/activities");
+        return;
+      }
+      setAllowed(true);
       setCanInvite(role === "super");
       await Promise.all([refreshAdmins(), refreshPending()]);
     })().catch(console.error);
-  }, []);
+  }, [router]);
+
+  if (!allowed) {
+    return <section className="admin-page stack">Opening Team…</section>;
+  }
 
   async function onInvite(e: FormEvent) {
     e.preventDefault();
@@ -120,7 +132,8 @@ export default function TeamPage() {
           <h1>Team</h1>
           <p>
             Platform admins can manage activities across Rotaract Certify. Per-activity managers are invited
-            from each activity’s Managers tab — not here.
+            from each activity’s Managers tab — not here. Removing someone from Team does not remove their
+            activity manager rows; manage those on each activity if you want to revoke activity access too.
           </p>
         </div>
       </div>
