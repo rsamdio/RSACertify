@@ -1,4 +1,4 @@
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtml from "sanitize-html";
 
 const ALLOWED_TAGS = [
   "p",
@@ -26,17 +26,22 @@ export function looksLikeHtml(value: string): boolean {
 /**
  * Sanitize organizer description HTML.
  * Allowlist only: paragraphs, breaks, bold/italic/underline/strike, lists, size spans.
+ * Uses sanitize-html (no jsdom) so Netlify SSR does not crash.
  */
 export function sanitizeDescriptionHtml(html: string): string {
   if (!html || !html.trim()) return "";
 
-  const clean = DOMPurify.sanitize(html, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR: ["class"],
-    ALLOW_DATA_ATTR: false
+  const clean = sanitizeHtml(html, {
+    allowedTags: ALLOWED_TAGS,
+    allowedAttributes: {
+      span: ["class"]
+    },
+    allowedClasses: {
+      span: [...ALLOWED_SIZE_CLASSES]
+    }
   });
 
-  // Only keep named size classes on spans.
+  // Only keep named size classes on spans (defense in depth after allowlist).
   const withSafeSpans = clean.replace(/<span\b([^>]*)>/gi, (_full, attrs: string) => {
     const classMatch = attrs.match(/\bclass\s*=\s*["']([^"']*)["']/i);
     if (!classMatch) return "<span>";
@@ -91,9 +96,9 @@ export function descriptionToPlainText(html: string): string {
     .replace(/<\/\s*li\s*>/gi, "\n")
     .replace(/<\/\s*h[1-6]\s*>/gi, "\n");
 
-  const stripped = DOMPurify.sanitize(withBreaks, {
-    ALLOWED_TAGS: [],
-    KEEP_CONTENT: true
+  const stripped = sanitizeHtml(withBreaks, {
+    allowedTags: [],
+    allowedAttributes: {}
   });
 
   return stripped
