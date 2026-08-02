@@ -19,7 +19,8 @@
   for = "/*"
   [headers.values]
     X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
+    # Framing is controlled by CSP frame-ancestors in src/middleware.ts
+    # (self + rsamdio.org only). Do not set X-Frame-Options DENY — it blocks embeds.
     # same-origin-allow-popups required for Firebase Google signInWithPopup
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
     Cross-Origin-Resource-Policy = "same-site"

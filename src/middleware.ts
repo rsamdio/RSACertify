@@ -65,7 +65,9 @@ export function middleware(_request: NextRequest) {
       "https://www.gstatic.com"
     ].join(" "),
     "worker-src 'self' blob:",
-    "frame-ancestors 'none'",
+    // Allow RSAMDIO main site (and local parent-site testing) to iframe Certify.
+    // Keep allowlisted — never use frame-ancestors *.
+    "frame-ancestors 'self' https://rsamdio.org https://www.rsamdio.org http://localhost:3000",
     "upgrade-insecure-requests"
   ]
     .join("; ")
