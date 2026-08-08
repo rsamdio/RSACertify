@@ -227,6 +227,17 @@ textarea {
   letter-spacing: 0.02em;
 }
 
+.brand-masthead-byline a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.brand-masthead-byline a:hover {
+  opacity: 0.85;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
 .brand-masthead.is-compact .brand-masthead-byline {
   margin-top: 0.35rem;
   font-size: 0.9rem;

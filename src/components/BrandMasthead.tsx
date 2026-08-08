@@ -27,7 +27,12 @@ export function BrandMasthead({
       <ProductTag className={asHeading ? "brand-masthead-title" : "brand-masthead-product"}>
         Rotaract Certify
       </ProductTag>
-      <p className="brand-masthead-byline">by Rotaract South Asia MDIO</p>
+      <p className="brand-masthead-byline">
+        by{" "}
+        <a href="https://rsamdio.org/" target="_blank" rel="noopener noreferrer">
+          Rotaract South Asia MDIO
+        </a>
+      </p>
       {lead ? <p className="brand-masthead-lead">{lead}</p> : null}
     </header>
   );

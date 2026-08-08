@@ -26,6 +26,11 @@ const similarTools = [
     href: "https://library.rsamdio.org/"
   },
   {
+    title: "Club Finder",
+    description: "Find Rotaract clubs across South Asia.",
+    href: "https://clubs.rsamdio.org/"
+  },
+  {
     title: "Publications Hub",
     description: "District publications from across South Asia.",
     href: "https://publications.rsamdio.org/"
